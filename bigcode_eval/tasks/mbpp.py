@@ -90,5 +90,4 @@ class MBPP(Task):
             references=references,
             predictions=generations,
         )
-        print(f"mbpp details: {details}")
         return results, details
