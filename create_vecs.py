@@ -6,6 +6,8 @@ import datasets
 import torch
 import transformers
 
+from accelerate import Accelerator
+
 from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
@@ -122,6 +124,12 @@ def parse_args():
         default=None,
         help="Path to save generations",
     )
+    parser.add_argument(
+        "--save_vecs_path",
+        type=str,
+        default=None,
+        help="Path to save steering vectors",
+    )
     return parser.parse_args()
 
 
@@ -132,6 +140,8 @@ def get_gpus_max_memory(max_memory, num_gpus):
 
 
 def create_model(args):
+
+    accelerator = Accelerator()
     # here we generate code and save it (evaluation is optional but True by default)
     dict_precisions = {
         "fp32": torch.float32,
@@ -190,27 +200,84 @@ def create_model(args):
     return model
 
 
+def create_tokenizer(args):
+    if args.left_padding:
+        # left padding is required for some models like chatglm3-6b
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.model,
+            revision=args.revision,
+            trust_remote_code=args.trust_remote_code,
+            token=args.use_auth_token,
+            padding_side="left",
+        )
+    else:
+        # used by default for most models
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.model,
+            revision=args.revision,
+            trust_remote_code=args.trust_remote_code,
+            token=args.use_auth_token,
+            truncation_side="left",
+            padding_side="right",
+        )
+    if not tokenizer.eos_token:
+        if tokenizer.bos_token:
+            tokenizer.eos_token = tokenizer.bos_token
+            print("bos_token used as eos_token")
+        else:
+            raise ValueError("No eos_token or bos_token found")
+    try:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # Some models like CodeGeeX2 have pad_token as a read-only property
+    except AttributeError:
+        print("Not setting pad_token to eos_token")
+        pass
+    WIZARD_LLAMA_MODELS = [
+        "WizardLM/WizardCoder-Python-34B-V1.0",
+        "WizardLM/WizardCoder-34B-V1.0",
+        "WizardLM/WizardCoder-Python-13B-V1.0",
+    ]
+    if args.model in WIZARD_LLAMA_MODELS:
+        tokenizer.bos_token = "<s>"
+        tokenizer.bos_token_id = 1
+        print("Changing bos_token to <s>")
+
+    if not tokenizer:
+        raise ValueError("Tokenizer not found")
+    return tokenizer
+
+
 def main():
     args = parse_args()
-    # model = create_model(args)
-    # get each generation
-    # get corresponding solution
-    # create steering vector
+    model = create_model(args)
+    tokenizer = create_tokenizer(args)
+    layers = steering.default_layers
 
     if not args.generations_path:
         raise ValueError("Please provide generations path")
     with open(args.generations_path, "r") as f:
         generations = json.load(f)
 
+    if not args.save_vecs_path:
+        raise ValueError("Please provide save vecs path")
+    if not os.path.exists(args.save_vecs_path):
+        os.makedirs(args.save_vecs_path)
+
     mbpp = MBPP()
 
+    total = len(generations)
     for idx, gens in enumerate(generations):
+        print(f"Processing {idx + 1}/{total}...")
         gen = gens[0]
-        print(f"gen raw: {gen}")
         gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
-        print(f"post gen: {gen}")
         sol = mbpp.get_solution(idx)
-        print(f"sol: {sol}")
+        gen_vecs = steering.create_steering_vectors(model, tokenizer, layers, gen)
+        sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
+        steer_vec = steering.subtract_steering_vectors(sol_vecs, gen_vecs)
+        save_path = os.path.join(args.save_vecs_path, f"{idx}")
+        steering.save_steering_vecs(save_path, steer_vec)
+        print(f"Completed {idx + 1}/{total}")
 
 
 if __name__ == "__main__":
