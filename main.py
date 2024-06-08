@@ -18,7 +18,7 @@ from bigcode_eval.arguments import EvalArguments
 from bigcode_eval.evaluator import Evaluator
 from bigcode_eval.tasks import ALL_TASKS
 
-from steering import wrap_layers
+import steering
 
 
 class MultiChoice:
@@ -212,6 +212,17 @@ def parse_args():
         action="store_true",
         help="Don't run generation but benchmark groundtruth (useful for debugging)",
     )
+    parser.add_argument(
+        "--steering_path",
+        type=str,
+        default=None,
+        help="Path to steering vectors",
+    )
+    parser.add_argument(
+        "--norm_steering",
+        action="store_true",
+        help="Normalize steering vectors",
+    )
     return parser.parse_args()
 
 
@@ -300,7 +311,14 @@ def main():
                 args.model,
                 **model_kwargs,
             )
-            model = wrap_layers(model, layers)
+            model = steering.wrap_layers(model, layers)
+            steering_path = args.steering_path
+            if steering_path:
+                # load steering vectors
+                vecs = steering.load_steering_vecs(steering_path, layers)
+                if args.norm_steering:
+                    vecs = steering.normalize_steering_vectors(vecs)
+                model = steering.apply_steering_vectors(model, vecs)
         elif args.modeltype == "seq2seq":
             warnings.warn(
                 "Seq2Seq models have only been tested for HumanEvalPack & CodeT5+ models."
