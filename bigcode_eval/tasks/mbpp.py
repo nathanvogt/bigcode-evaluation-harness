@@ -70,7 +70,7 @@ class MBPP(Task):
         """Builds the reference solution for the doc (sample from the test dataset)."""
         return "\n".join(doc["test_list"])
 
-    def postprocess_generation(self, generation, idx):
+    def postprocess_generation(self, generation, idx, include_prompt=True):
         """Defines the postprocessing for a LM generation.
         :param generation: str
             code generation from LM
@@ -79,7 +79,11 @@ class MBPP(Task):
         """
         prompt = self.get_prompt(self.dataset["train"][idx])
         generation = generation[len(prompt) :]
-        return prompt + self._stop_at_stop_token(generation, self.stop_words)
+        return (
+            prompt + self._stop_at_stop_token(generation, self.stop_words)
+            if include_prompt
+            else self._stop_at_stop_token(generation, self.stop_words)
+        )
 
     def get_solution(self, idx):
         return self.dataset["train"][idx]["code"]

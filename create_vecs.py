@@ -207,7 +207,7 @@ def main():
     for idx, gens in enumerate(generations):
         gen = gens[0]
         print(f"gen raw: {gen}")
-        gen = mbpp.postprocess_generation(gen, idx)
+        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         print(f"post gen: {gen}")
         sol = mbpp.get_solution(idx)
         print(f"sol: {sol}")
