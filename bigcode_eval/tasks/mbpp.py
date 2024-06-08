@@ -86,7 +86,9 @@ class MBPP(Task):
         :param references: list(str)
             list of str containing refrences
         """
-        return compute_code_eval(
+        results, details = compute_code_eval(
             references=references,
             predictions=generations,
         )
+        print(f"mbpp details: {details}")
+        return results, details

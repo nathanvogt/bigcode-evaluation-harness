@@ -270,9 +270,9 @@ def main():
             print("evaluation only mode")
         evaluator = Evaluator(accelerator, None, None, args)
         for task in task_names:
-            results, details = evaluator.evaluate(task)
+            results, eval_details = evaluator.evaluate(task)
             results[task] = results
-            details[task] = details
+            details[task] = eval_details
     else:
         # here we generate code and save it (evaluation is optional but True by default)
         dict_precisions = {
@@ -427,11 +427,11 @@ def main():
                         save_references_path,
                     )
             else:
-                results, details = evaluator.evaluate(
+                results, eval_details = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
                 results[task] = results
-                details[task] = details
+                details[task] = eval_details
 
     # Save all args to config
     results["config"] = vars(args)
