@@ -125,6 +125,12 @@ def parse_args():
         help="Path to save generations",
     )
     parser.add_argument(
+        "--steering_path",
+        type=str,
+        default=None,
+        help="Path to steering vectors",
+    )
+    parser.add_argument(
         "--save_vecs_path",
         type=str,
         default=None,
