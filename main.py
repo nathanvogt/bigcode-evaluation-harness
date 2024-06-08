@@ -18,6 +18,8 @@ from bigcode_eval.arguments import EvalArguments
 from bigcode_eval.evaluator import Evaluator
 from bigcode_eval.tasks import ALL_TASKS
 
+from steering import wrap_layers
+
 
 class MultiChoice:
     def __init__(self, choices):
@@ -276,7 +278,7 @@ def main():
             print("Loading model in 4bit")
             model_kwargs["load_in_4bit"] = args.load_in_4bit
             model_kwargs["torch_dtype"] = torch.float16
-            model_kwargs["bnb_4bit_compute_dtype"] = torch.float16            
+            model_kwargs["bnb_4bit_compute_dtype"] = torch.float16
             model_kwargs["device_map"] = {"": accelerator.process_index}
         else:
             print(f"Loading model in {args.precision}")
@@ -293,10 +295,12 @@ def main():
                     print("Loading model in auto mode")
 
         if args.modeltype == "causal":
+            layers = [14, 15, 16, 17, 18]
             model = AutoModelForCausalLM.from_pretrained(
                 args.model,
                 **model_kwargs,
             )
+            model = wrap_layers(model, layers)
         elif args.modeltype == "seq2seq":
             warnings.warn(
                 "Seq2Seq models have only been tested for HumanEvalPack & CodeT5+ models."
@@ -325,7 +329,7 @@ def main():
                 revision=args.revision,
                 trust_remote_code=args.trust_remote_code,
                 token=args.use_auth_token,
-                padding_side="left",  
+                padding_side="left",
             )
         else:
             # used by default for most models
@@ -335,7 +339,7 @@ def main():
                 trust_remote_code=args.trust_remote_code,
                 token=args.use_auth_token,
                 truncation_side="left",
-                padding_side="right",  
+                padding_side="right",
             )
         if not tokenizer.eos_token:
             if tokenizer.bos_token:
@@ -345,7 +349,7 @@ def main():
                 raise ValueError("No eos_token or bos_token found")
         try:
             tokenizer.pad_token = tokenizer.eos_token
-            
+
         # Some models like CodeGeeX2 have pad_token as a read-only property
         except AttributeError:
             print("Not setting pad_token to eos_token")
@@ -353,7 +357,7 @@ def main():
         WIZARD_LLAMA_MODELS = [
             "WizardLM/WizardCoder-Python-34B-V1.0",
             "WizardLM/WizardCoder-34B-V1.0",
-            "WizardLM/WizardCoder-Python-13B-V1.0"
+            "WizardLM/WizardCoder-Python-13B-V1.0",
         ]
         if args.model in WIZARD_LLAMA_MODELS:
             tokenizer.bos_token = "<s>"
@@ -362,10 +366,9 @@ def main():
 
         evaluator = Evaluator(accelerator, model, tokenizer, args)
 
-        if (
+        if args.load_generations_intermediate_paths and len(
             args.load_generations_intermediate_paths
-            and len(args.load_generations_intermediate_paths) != len(task_names)
-        ):
+        ) != len(task_names):
             raise ValueError(
                 "If passing --load_generations_intermediate_paths, \
                 must pass equal number of files as number of tasks"
@@ -386,7 +389,9 @@ def main():
                     task, intermediate_generations=intermediate_generations
                 )
                 if accelerator.is_main_process:
-                    save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
+                    save_generations_path = (
+                        f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
+                    )
                     save_references_path = f"references_{task}.json"
                     evaluator.save_json_files(
                         generations,
