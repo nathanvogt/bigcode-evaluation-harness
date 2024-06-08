@@ -8,7 +8,6 @@ They were handwritten to ensure not to be included in the training set of code g
 Homepage: https://github.com/openai/human-eval
 """
 
-
 from bigcode_eval.base import Task
 from bigcode_eval.tasks.custom_metrics.code_eval import compute_code_eval
 
@@ -49,7 +48,16 @@ class GeneralHumanEval(Task):
 
     def __init__(self, strip_prompt, k=[1, 10, 100], num_workers=16, timeout=3.0):
         super().__init__(
-            stop_words=["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif", "\n```", "<file_sep>"],
+            stop_words=[
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\n@",
+                "\nprint",
+                "\nif",
+                "\n```",
+                "<file_sep>",
+            ],
             requires_execution=True,
         )
         self.strip_prompt = strip_prompt
@@ -74,7 +82,6 @@ class GeneralHumanEval(Task):
         entry_point = f"check({doc['entry_point']})"
         return "\n" + test_func + "\n" + entry_point
 
-
     def postprocess_generation(self, generation, idx):
         """Defines the postprocessing for a LM generation.
         :param generation: str
@@ -95,11 +102,12 @@ class GeneralHumanEval(Task):
         :param references: list(str)
             list of str containing refrences
         """
-        results, _ = compute_code_eval(
+        results, details = compute_code_eval(
             references=references,
             predictions=generations,
             k=self.k,
             num_workers=self.num_workers,
             timeout=self.timeout,
         )
+        details.to_json("details.json")
         return results
