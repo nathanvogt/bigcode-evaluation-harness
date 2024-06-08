@@ -202,14 +202,14 @@ def main():
     with open(args.generations_path, "r") as f:
         generations = json.load(f)
 
-    dataset = MBPP().get_dataset()
+    mbpp = MBPP()
 
     for idx, gens in enumerate(generations):
         gen = gens[0]
         print(f"gen raw: {gen}")
-        gen = dataset.postprocess_generation(gen, idx)
+        gen = mbpp.postprocess_generation(gen, idx)
         print(f"post gen: {gen}")
-        sol = dataset.get_solution(idx)
+        sol = mbpp.get_solution(idx)
         print(f"sol: {sol}")
 
 
