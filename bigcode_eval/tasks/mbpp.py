@@ -78,12 +78,12 @@ class MBPP(Task):
             index of doc in the dataset to which the generation belongs
         """
         prompt = self.get_prompt(self.dataset["train"][idx])
+        print(f"prompt: \n{repr(prompt)}")
         generation = generation[len(prompt) :]
-        return (
-            prompt + self._stop_at_stop_token(generation, self.stop_words)
-            if include_prompt
-            else self._stop_at_stop_token(generation, self.stop_words)
-        )
+        if not include_prompt:
+            # slice prompt until second """
+            prompt = prompt[: prompt.find('"""', 3) + 3]
+        return prompt + self._stop_at_stop_token(generation, self.stop_words)
 
     def get_solution(self, idx):
         return self.dataset["train"][idx]["code"]
