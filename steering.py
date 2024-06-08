@@ -1,7 +1,6 @@
 from typing import List, Dict
 import os
 import torch
-import path
 
 default_layers = [14, 15, 16, 17, 18]
 
@@ -121,7 +120,7 @@ def save_steering_vecs(save_path: str, vecs: Dict):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         # torch.save(layer_vec, f"./vecs/{task_id}/{layer_index}.pt")
-        torch.save(layer_vec, path.join(save_path, f"{layer_index}.pt"))
+        torch.save(layer_vec, os.path.join(save_path, f"{layer_index}.pt"))
 
 
 def load_steering_vecs(folder_path: str, layers=None):
