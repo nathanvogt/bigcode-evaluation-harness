@@ -3,6 +3,8 @@ import os
 import torch
 import path
 
+default_layers = [14, 15, 16, 17, 18]
+
 
 class WrappedModule(torch.nn.Module):
     def __init__(self, module):

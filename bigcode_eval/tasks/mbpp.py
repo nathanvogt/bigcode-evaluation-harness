@@ -46,10 +46,13 @@ class MBPP(Task):
 
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
-        dataset = self.dataset["test"]
+        dataset = self.dataset["train"]
         # the wrong split of mbpp can be loaded with old datasets cache
         assert (
-            len(dataset) == 500
+            # len(dataset) == 500
+            # using train for now
+            len(dataset)
+            == 374
         ), "please ensure you have the latest version of MBPP dataset, try deleting its old cache"
         return dataset
 
@@ -74,9 +77,12 @@ class MBPP(Task):
         :param idx: int
             index of doc in the dataset to which the generation belongs
         """
-        prompt = self.get_prompt(self.dataset["test"][idx])
+        prompt = self.get_prompt(self.dataset["train"][idx])
         generation = generation[len(prompt) :]
         return prompt + self._stop_at_stop_token(generation, self.stop_words)
+
+    def get_solution(self, idx):
+        return self.dataset["train"][idx]["code"]
 
     def process_results(self, generations, references):
         """Takes the list of LM generations and evaluates them against ground truth references,

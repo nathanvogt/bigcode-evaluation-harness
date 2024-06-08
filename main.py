@@ -315,7 +315,7 @@ def main():
                     print("Loading model in auto mode")
 
         if args.modeltype == "causal":
-            layers = [14, 15, 16, 17, 18]
+            layers = steering.default_layers
             model = AutoModelForCausalLM.from_pretrained(
                 args.model,
                 **model_kwargs,
