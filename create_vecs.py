@@ -1,5 +1,4 @@
 import os
-import fnmatch
 import json
 import warnings
 from bigcode_eval.tasks.mbpp import MBPP
@@ -7,7 +6,6 @@ import datasets
 import torch
 import transformers
 
-from accelerate import Accelerator
 from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
@@ -213,3 +211,7 @@ def main():
         print(f"post gen: {gen}")
         sol = dataset.get_solution(idx)
         print(f"sol: {sol}")
+
+
+if __name__ == "__main__":
+    main()
