@@ -414,6 +414,10 @@ def main():
                 generations, references = evaluator.generate_text(
                     task, intermediate_generations=intermediate_generations
                 )
+                print("generations: \n")
+                print(generations)
+                print("references: \n")
+                print(references)
                 if accelerator.is_main_process:
                     save_generations_path = (
                         f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
