@@ -270,8 +270,8 @@ def main():
             print("evaluation only mode")
         evaluator = Evaluator(accelerator, None, None, args)
         for task in task_names:
-            results, eval_details = evaluator.evaluate(task)
-            results[task] = results
+            res, eval_details = evaluator.evaluate(task)
+            results[task] = res
             details[task] = eval_details
     else:
         # here we generate code and save it (evaluation is optional but True by default)
@@ -427,10 +427,10 @@ def main():
                         save_references_path,
                     )
             else:
-                results, eval_details = evaluator.evaluate(
+                res, eval_details = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
-                results[task] = results
+                results[task] = res
                 details[task] = eval_details
 
     # Save all args to config
