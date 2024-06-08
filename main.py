@@ -323,7 +323,6 @@ def main():
             model = steering.wrap_layers(model, layers)
             steering_path = args.steering_path
             if steering_path:
-                # load steering vectors
                 vecs = steering.load_steering_vecs(steering_path, layers)
                 if args.norm_steering:
                     vecs = steering.normalize_steering_vectors(vecs)

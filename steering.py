@@ -1,6 +1,7 @@
 from typing import List, Dict
 import os
 import torch
+import path
 
 
 class WrappedModule(torch.nn.Module):
@@ -113,12 +114,12 @@ def generate_one_completion(model, tokenizer, prompt):
     return tokenizer.decode(response, skip_special_tokens=True)
 
 
-def save_steering_vecs(task_id: str, vecs: Dict):
+def save_steering_vecs(save_path: str, vecs: Dict):
     for layer_index, layer_vec in vecs.items():
-        path = f"./vecs/{task_id}"
-        if not os.path.exists(path):
-            os.makedirs(path)
-        torch.save(layer_vec, f"./vecs/{task_id}/{layer_index}.pt")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        # torch.save(layer_vec, f"./vecs/{task_id}/{layer_index}.pt")
+        torch.save(layer_vec, path.join(save_path, f"{layer_index}.pt"))
 
 
 def load_steering_vecs(folder_path: str, layers=None):
