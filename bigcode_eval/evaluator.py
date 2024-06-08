@@ -27,6 +27,7 @@ Once you have read this disclaimer and taken appropriate precautions, set the ar
 ################################################################################\
 """
 
+
 class Evaluator:
     def __init__(self, accelerator, model, tokenizer, args):
         self.accelerator = accelerator
@@ -45,16 +46,28 @@ class Evaluator:
         dataset = task.get_dataset()
         # if args.limit is None, use all samples
         # if args.limit is used, make sure args.limit_start + args.limit <= len(dataset)
-        n_tasks = min(self.args.limit, len(dataset) - self.args.limit_start) if self.args.limit else len(dataset)
+        n_tasks = (
+            min(self.args.limit, len(dataset) - self.args.limit_start)
+            if self.args.limit
+            else len(dataset)
+        )
         # when args.limit is None
-        # adjust n_tasks by args.limit_start to prevent out of bounds issues 
+        # adjust n_tasks by args.limit_start to prevent out of bounds issues
         if not self.args.limit:
             n_tasks -= self.args.limit_start
-        references = [task.get_reference(dataset[i]) for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
+        references = [
+            task.get_reference(dataset[i])
+            for i in range(self.args.limit_start, self.args.limit_start + n_tasks)
+        ]
 
         if self.args.check_references:
             if "get_solution" in inspect.signature(task.get_reference).parameters:
-                solutions = [[task.get_reference(dataset[i], get_solution=True)] for i in range(self.args.limit_start, self.args.limit_start+n_tasks)]
+                solutions = [
+                    [task.get_reference(dataset[i], get_solution=True)]
+                    for i in range(
+                        self.args.limit_start, self.args.limit_start + n_tasks
+                    )
+                ]
             else:
                 solutions = [[ref] for ref in references]
             return solutions, references
@@ -92,20 +105,29 @@ class Evaluator:
         if task.requires_execution and not self.allow_code_execution:
             raise ValueError(_WARNING)
 
-        generations, references = self.generate_text(task_name, intermediate_generations=intermediate_generations)
+        generations, references = self.generate_text(
+            task_name, intermediate_generations=intermediate_generations
+        )
 
         if self.accelerator.is_main_process:
             if not self.args.load_generations_path:
                 save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"
-                self.save_json_files(generations, references, save_generations_path, f"references_{task_name}.json")
+                self.save_json_files(
+                    generations,
+                    references,
+                    save_generations_path,
+                    f"references_{task_name}.json",
+                )
 
             # make sure tokenizer plays nice with multiprocessing
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
             if self.allow_code_execution and task.requires_execution:
                 os.environ["HF_ALLOW_CODE_EVAL"] = "1"
             print("Evaluating generations...")
-            results = task.process_results(generations, references)
-            return results
+            res = task.process_results(generations, references)
+            if len(res) == 1:
+                return res, None
+            return res
 
     def save_json_files(
         self,

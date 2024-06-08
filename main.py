@@ -223,6 +223,12 @@ def parse_args():
         action="store_true",
         help="Normalize steering vectors",
     )
+    parser.add_argument(
+        "--save_details_path",
+        type=str,
+        default=None,
+        help="Path to save detailed results",
+    )
     return parser.parse_args()
 
 
@@ -257,13 +263,16 @@ def main():
         print(f"Selected Tasks: {task_names}")
 
     results = {}
+    details = {}
     if args.load_generations_path:
         # here we don't generate code but only evaluate previously computed generations
         if accelerator.is_main_process:
             print("evaluation only mode")
         evaluator = Evaluator(accelerator, None, None, args)
         for task in task_names:
-            results[task] = evaluator.evaluate(task)
+            results, details = evaluator.evaluate(task)
+            results[task] = results
+            details[task] = details
     else:
         # here we generate code and save it (evaluation is optional but True by default)
         dict_precisions = {
@@ -418,9 +427,11 @@ def main():
                         save_references_path,
                     )
             else:
-                results[task] = evaluator.evaluate(
+                results, details = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
+                results[task] = results
+                details[task] = details
 
     # Save all args to config
     results["config"] = vars(args)
@@ -431,6 +442,12 @@ def main():
 
         with open(args.metric_output_path, "w") as f:
             f.write(dumped)
+
+        if args.save_details_path:
+            details["config"] = vars(args)
+            dumped = json.dumps(details, indent=2)
+            with open(args.save_details_path, "w") as f:
+                f.write(dumped)
 
 
 if __name__ == "__main__":

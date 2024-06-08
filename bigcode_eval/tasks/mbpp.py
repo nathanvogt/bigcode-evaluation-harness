@@ -32,7 +32,15 @@ class MBPP(Task):
 
     def __init__(self):
         super().__init__(
-            stop_words=["\nclass", "\nassert", '\n"""', "\nprint", "\nif", "\n<|/", "\n```"],
+            stop_words=[
+                "\nclass",
+                "\nassert",
+                '\n"""',
+                "\nprint",
+                "\nif",
+                "\n<|/",
+                "\n```",
+            ],
             requires_execution=True,
         )
 
@@ -59,7 +67,6 @@ class MBPP(Task):
         """Builds the reference solution for the doc (sample from the test dataset)."""
         return "\n".join(doc["test_list"])
 
-
     def postprocess_generation(self, generation, idx):
         """Defines the postprocessing for a LM generation.
         :param generation: str
@@ -79,8 +86,7 @@ class MBPP(Task):
         :param references: list(str)
             list of str containing refrences
         """
-        results, _ = compute_code_eval(
+        return compute_code_eval(
             references=references,
             predictions=generations,
         )
-        return results

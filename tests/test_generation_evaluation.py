@@ -103,6 +103,6 @@ def test_evaluation():
         # path to generation examples to evaluate
         args.load_generations_path = f"tests/data/{task}_eval_gens.json"
         evaluator = Evaluator(accelerator, None, None, args)
-        results = evaluator.evaluate(task)
+        results, _ = evaluator.evaluate(task)
         assert results == REF_EVAL_SCORES[task]
     print("passed eval")
