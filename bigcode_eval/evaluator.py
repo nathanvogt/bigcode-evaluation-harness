@@ -109,7 +109,7 @@ class Evaluator:
             task_name, intermediate_generations=intermediate_generations
         )
 
-        if self.accelerator.is_main_process:
+        if self.accelerator.is_main_process or True:
             if not self.args.load_generations_path:
                 save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"
                 self.save_json_files(
@@ -137,10 +137,10 @@ class Evaluator:
         save_references_path: str,
     ) -> None:
         if self.args.save_generations:
-            with open(save_generations_path, "w") as fp:
+            with open(save_generations_path, "a") as fp:
                 json.dump(generations, fp)
                 print(f"generations were saved at {save_generations_path}")
         if self.args.save_references:
-            with open(save_references_path, "w") as fp:
+            with open(save_references_path, "a") as fp:
                 json.dump(references, fp)
                 print(f"references were saved at {save_references_path}")
