@@ -28,6 +28,10 @@ def compare_steering_results(no_steer_path, steer_path):
     print(
         f"With steering: {len(steer_passed)} passed, {len(steer_failed)} failed, {len(steer_passed) / (len(steer_passed) + len(steer_failed)) * 100:.2f}% passed"
     )
+    failed_now_passing = set(no_steer_failed).intersection(steer_passed)
+    passed_now_failing = set(no_steer_passed).intersection(steer_failed)
+    print(f"Failed but now passing with steering: {len(failed_now_passing)}")
+    print(f"Passed but now failing with steering: {len(passed_now_failing)}")
 
 
 def main():
