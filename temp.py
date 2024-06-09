@@ -1,41 +1,174 @@
 import json
 
-prompt = '"""\nWrite a function to find the longest chain which can be formed from the given set of pairs.\nassert max_chain_length([Pair(5, 24), Pair(15, 25),Pair(27, 40), Pair(50, 60)], 4) == 3\n"""\n'
-
-stop_words = [
-    "\nclass",
-    "\nassert",
-    '\n"""',
-    "\nprint",
-    "\nif",
-    "\n<|/",
-    "\n```",
+train_failed_ids = [
+    0,
+    2,
+    1,
+    7,
+    8,
+    11,
+    14,
+    19,
+    18,
+    16,
+    21,
+    23,
+    25,
+    28,
+    30,
+    29,
+    35,
+    37,
+    36,
+    39,
+    38,
+    40,
+    41,
+    42,
+    47,
+    44,
+    45,
+    49,
+    50,
+    51,
+    55,
+    59,
+    58,
+    60,
+    69,
+    67,
+    70,
+    74,
+    76,
+    83,
+    89,
+    88,
+    95,
+    98,
+    101,
+    103,
+    105,
+    111,
+    112,
+    113,
+    116,
+    120,
+    118,
+    121,
+    130,
+    134,
+    137,
+    141,
+    142,
+    144,
+    122,
+    145,
+    123,
+    146,
+    147,
+    150,
+    151,
+    153,
+    155,
+    158,
+    157,
+    162,
+    160,
+    161,
+    164,
+    166,
+    168,
+    175,
+    176,
+    178,
+    177,
+    181,
+    182,
+    186,
+    190,
+    192,
+    193,
+    200,
+    201,
+    209,
+    211,
+    214,
+    213,
+    218,
+    219,
+    221,
+    225,
+    229,
+    233,
+    237,
+    239,
+    243,
+    250,
+    253,
+    245,
+    258,
+    266,
+    267,
+    272,
+    242,
+    274,
+    278,
+    279,
+    280,
+    281,
+    283,
+    289,
+    299,
+    298,
+    302,
+    304,
+    307,
+    309,
+    310,
+    311,
+    314,
+    313,
+    315,
+    316,
+    317,
+    321,
+    324,
+    325,
+    326,
+    329,
+    306,
+    333,
+    335,
+    337,
+    338,
+    343,
+    351,
+    350,
+    352,
+    353,
+    356,
+    355,
+    359,
+    362,
+    363,
+    364,
+    368,
+    367,
+    366,
+    370,
 ]
 
+path = "/Users/nathanvogt/Downloads/result_details.json"
 
-def _stop_at_stop_token(decoded_string, stop_tokens):
-    """
-    Produces the prefix of decoded_string that ends at the first occurrence of
-    a stop_token.
-    WARNING: the decoded_string *must not* include the prompt, which may have stop tokens
-    itself.
-    """
-    min_stop_index = len(decoded_string)
-    for stop_token in stop_tokens:
-        stop_index = decoded_string.find(stop_token)
-        if stop_index != -1 and stop_index < min_stop_index:
-            min_stop_index = stop_index
-    return decoded_string[:min_stop_index]
+failed_ids = []
 
-
-with open("/Users/nathanvogt/Downloads/generations_mbpp.json", "r") as f:
-    generations = json.load(f)
-generation = generations[0][0]
-# print(generation)
-generation = generation[len(prompt) :]
-print(generation)
-include_prompt = True
-if not include_prompt:
-    # slice prompt until second """
-    prompt = prompt[: prompt.find('"""', 3) + 3]
-p = prompt + _stop_at_stop_token(generation, stop_words)
+with open(path, "r") as f:
+    results = json.load(f)
+mbpp_results = results["mbpp"]
+for mbpp_result in mbpp_results.values():
+    _, result = mbpp_result[0]
+    task_id = result["task_id"]
+    passed = result["passed"]
+    if not passed:
+        failed_ids.append(task_id)
+print(failed_ids)
