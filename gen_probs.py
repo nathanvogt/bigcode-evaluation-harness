@@ -112,6 +112,12 @@ def parse_args():
         help="Max memroy to allocate per gpu, you can also use 'auto'",
     )
     parser.add_argument(
+        "--steering_path",
+        type=str,
+        default=None,
+        help="Path to steering vectors",
+    )
+    parser.add_argument(
         "--generations_path",
         type=str,
         default=None,
@@ -243,7 +249,6 @@ def main():
     args = parse_args()
     model = create_model(args)
     tokenizer = create_tokenizer(args)
-    layers = steering.default_layers
 
     if not args.generations_path:
         raise ValueError("Please provide generations path")
@@ -252,8 +257,8 @@ def main():
 
     if not args.save_probs_path:
         raise ValueError("Please provide save probs path")
-    if not os.path.exists(args.save_probs_path):
-        os.makedirs(args.save_probs_path)
+    if os.path.exists(args.save_probs_path):
+        raise ValueError(f"File already exists at {args.save_probs_path}")
 
     total = len(generations)
     probs = []
