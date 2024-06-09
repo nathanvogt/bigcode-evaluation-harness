@@ -283,6 +283,15 @@ def main():
         steer_vec = steering.subtract_steering_vectors(sol_vecs, gen_vecs)
         save_path = os.path.join(args.save_vecs_path, f"{idx}")
         steering.save_steering_vecs(save_path, steer_vec)
+        # clear tensors from gpu memory
+        for vec in gen_vecs.values():
+            del vec
+        for vec in sol_vecs.values():
+            del vec
+        for vec in steer_vec.values():
+            del vec
+        torch.cuda.empty_cache()
+
         print(f"Completed {idx + 1}/{total}")
 
 
