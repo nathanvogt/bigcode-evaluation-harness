@@ -41,11 +41,39 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None):
 
     failed_now_passing = set(no_steer_failed).intersection(steer_passed)
     passed_now_failing = set(no_steer_passed).intersection(steer_failed)
-    still_passed = set(no_steer_passed).intersection(steer_passed)
-    still_failed = set(no_steer_failed).intersection(steer_failed)
 
     print(f"Failed but now passing with steering: {len(failed_now_passing)}")
     print(f"Passed but now failing with steering: {len(passed_now_failing)}")
+
+    if probs_path:
+        probabilities = load_probabilities(probs_path)
+        plot_task_probabilities(
+            probabilities, no_steer_passed, no_steer_failed, steer_passed, steer_failed
+        )
+
+
+def plot_task_probabilities(
+    probabilities, no_steer_passed, no_steer_failed, steer_passed, steer_failed
+):
+    colors = [
+        "green" if task in no_steer_passed else "red"
+        for task in range(len(probabilities))
+    ]
+    edge_colors = [
+        "green" if task in steer_passed else "red" for task in range(len(probabilities))
+    ]
+
+    plt.scatter(
+        range(len(probabilities)),
+        probabilities,
+        color=colors,
+        edgecolors=edge_colors,
+        linewidth=2,
+    )
+    plt.xlabel("Task Index")
+    plt.ylabel("Probability")
+    plt.title("Task Probability by Steering Results")
+    plt.show()
 
 
 def plot_comparison_matrix(
