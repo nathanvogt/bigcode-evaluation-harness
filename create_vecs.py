@@ -1,23 +1,16 @@
 import os
 import json
-import warnings
 from bigcode_eval.tasks.mbpp import MBPP
-import datasets
 import torch
-import transformers
 
-from accelerate import Accelerator
 
 from transformers import (
     AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     HfArgumentParser,
 )
 
 from bigcode_eval.arguments import EvalArguments
-from bigcode_eval.evaluator import Evaluator
-from bigcode_eval.tasks import ALL_TASKS
 
 import steering
 
@@ -146,8 +139,6 @@ def get_gpus_max_memory(max_memory, num_gpus):
 
 
 def create_model(args):
-
-    accelerator = Accelerator()
     # here we generate code and save it (evaluation is optional but True by default)
     dict_precisions = {
         "fp32": torch.float32,
@@ -167,26 +158,26 @@ def create_model(args):
     if args.load_in_8bit:
         print("Loading model in 8bit")
         model_kwargs["load_in_8bit"] = args.load_in_8bit
-        model_kwargs["device_map"] = {"": accelerator.process_index}
+        # model_kwargs["device_map"] = {"": accelerator.process_index}
     elif args.load_in_4bit:
         print("Loading model in 4bit")
         model_kwargs["load_in_4bit"] = args.load_in_4bit
         model_kwargs["torch_dtype"] = torch.float16
         model_kwargs["bnb_4bit_compute_dtype"] = torch.float16
-        model_kwargs["device_map"] = {"": accelerator.process_index}
+        # model_kwargs["device_map"] = {"": accelerator.process_index}
     else:
         print(f"Loading model in {args.precision}")
         model_kwargs["torch_dtype"] = dict_precisions[args.precision]
 
-        if args.max_memory_per_gpu:
-            if args.max_memory_per_gpu != "auto":
-                model_kwargs["max_memory"] = get_gpus_max_memory(
-                    args.max_memory_per_gpu, accelerator.num_processes
-                )
-                model_kwargs["offload_folder"] = "offload"
-            else:
-                model_kwargs["device_map"] = "auto"
-                print("Loading model in auto mode")
+        # if args.max_memory_per_gpu:
+        #     if args.max_memory_per_gpu != "auto":
+        #         model_kwargs["max_memory"] = get_gpus_max_memory(
+        #             args.max_memory_per_gpu, accelerator.num_processes
+        #         )
+        #         model_kwargs["offload_folder"] = "offload"
+        #     else:
+        #         model_kwargs["device_map"] = "auto"
+        #         print("Loading model in auto mode")
 
     if args.modeltype == "causal":
         layers = steering.default_layers
@@ -278,9 +269,10 @@ def main():
         gen = gens[0]
         gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         sol = mbpp.get_solution(idx)
-        gen_vecs = steering.create_steering_vectors(model, tokenizer, layers, gen)
-        sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
-        steer_vec = steering.subtract_steering_vectors(sol_vecs, gen_vecs)
+        with torch.no_grad():
+            gen_vecs = steering.create_steering_vectors(model, tokenizer, layers, gen)
+            sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
+            steer_vec = steering.subtract_steering_vectors(sol_vecs, gen_vecs)
         save_path = os.path.join(args.save_vecs_path, f"{idx}")
         steering.save_steering_vecs(save_path, steer_vec)
         # clear tensors from gpu memory
@@ -291,7 +283,6 @@ def main():
         for vec in steer_vec.values():
             del vec
         torch.cuda.empty_cache()
-
         print(f"Completed {idx + 1}/{total}")
 
 

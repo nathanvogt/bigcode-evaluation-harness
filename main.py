@@ -320,13 +320,13 @@ def main():
                 args.model,
                 **model_kwargs,
             )
-            model = steering.wrap_layers(model, layers)
+            steering.wrap_layers(model, layers)
             steering_path = args.steering_path
             if steering_path:
                 vecs = steering.load_steering_vecs(steering_path, layers)
                 if args.norm_steering:
                     vecs = steering.normalize_steering_vectors(vecs)
-                model = steering.apply_steering_vectors(model, vecs)
+                steering.apply_steering_vectors(model, vecs)
         elif args.modeltype == "seq2seq":
             warnings.warn(
                 "Seq2Seq models have only been tested for HumanEvalPack & CodeT5+ models."
@@ -414,11 +414,10 @@ def main():
                 generations, references = evaluator.generate_text(
                     task, intermediate_generations=intermediate_generations
                 )
-                if accelerator.is_main_process or True:
+                if accelerator.is_main_process:
                     save_generations_path = (
                         f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
                     )
-                    print(f"\n\nsaving to: {save_generations_path}\n\n")
                     save_references_path = f"references_{task}.json"
                     evaluator.save_json_files(
                         generations,
