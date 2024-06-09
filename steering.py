@@ -135,3 +135,21 @@ def load_steering_vecs(folder_path: str, layers=None):
         vec = vec.to(torch.float16)
         res[layer_index] = vec
     return res
+
+
+def to_tokens_and_logprobs(model, tokenizer, input_text):
+    input_texts = [input_text]
+    input_ids = tokenizer(input_texts, return_tensors="pt").input_ids
+    outputs = model(input_ids)
+    probs = torch.log_softmax(outputs.logits, dim=-1).detach()
+    probs = probs[:, :-1, :]
+    input_ids = input_ids[:, 1:]
+    gen_probs = torch.gather(probs, 2, input_ids[:, :, None]).squeeze(-1)
+    return gen_probs
+
+
+def seq_prob(model, tokenizer, input_text):
+    logprobs = to_tokens_and_logprobs(model, tokenizer, input_text)
+    sum = torch.sum(logprobs, dim=-1)
+    prob = torch.exp(sum)
+    return prob.cpu().numpy().tolist()[0]
