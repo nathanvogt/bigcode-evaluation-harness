@@ -2,7 +2,7 @@ import os
 import json
 from bigcode_eval.tasks.mbpp import MBPP
 import torch
-
+from decimal import Decimal, getcontext
 
 from transformers import (
     AutoModelForCausalLM,
@@ -260,18 +260,21 @@ def main():
     if os.path.exists(args.save_probs_path):
         raise ValueError(f"File already exists at {args.save_probs_path}")
 
-    total = len(generations)
+    getcontext().prec = 100
     probs = []
+    total = len(generations)
     for idx, gens in enumerate(generations):
         print(f"Processing {idx + 1}/{total}...")
         gen = gens[0]
-        # gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         with torch.no_grad():
             seq_prob = steering.seq_prob(model, tokenizer, gen)
-        probs.append(seq_prob)
+            probs.append(Decimal(seq_prob.item()).quantize(Decimal("1." + "0" * 99)))
+
         print(f"Completed {idx + 1}/{total}")
-    with open(args.save_probs_path, "w") as f:
-        json.dump(probs, f)
+
+    with open(args.save_probs_path, "w") as fp:
+        for prob in probs:
+            fp.write(f"{prob}\n")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def load_probabilities(file_path):
+    probabilities = []
+    with open(file_path, "r") as file:
+        for line in file:
+            prob = float(line.strip())
+            probabilities.append(prob)
+    return probabilities
+
+
 def id_results(path: str):
     failed_ids = []
     passed_ids = []
@@ -21,7 +30,7 @@ def id_results(path: str):
     return passed_ids, failed_ids
 
 
-def compare_steering_results(no_steer_path, steer_path):
+def compare_steering_results(no_steer_path, steer_path, probs_path=None):
     no_steer_passed, no_steer_failed = id_results(no_steer_path)
     steer_passed, steer_failed = id_results(steer_path)
 
@@ -37,13 +46,6 @@ def compare_steering_results(no_steer_path, steer_path):
 
     print(f"Failed but now passing with steering: {len(failed_now_passing)}")
     print(f"Passed but now failing with steering: {len(passed_now_failing)}")
-
-    plot_comparison_matrix(
-        len(still_passed),
-        len(passed_now_failing),
-        len(failed_now_passing),
-        len(still_failed),
-    )
 
 
 def plot_comparison_matrix(
@@ -69,8 +71,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_steer_path", type=str, required=True)
     parser.add_argument("--steer_path", type=str, required=True)
+    parser.add_argument("--probs_path", type=str, required=False)
     args = parser.parse_args()
-    compare_steering_results(args.no_steer_path, args.steer_path)
+    compare_steering_results(args.no_steer_path, args.steer_path, args.probs_path)
 
 
 if __name__ == "__main__":

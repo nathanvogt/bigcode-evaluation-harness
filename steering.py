@@ -151,5 +151,4 @@ def to_tokens_and_logprobs(model, tokenizer, input_text):
 def seq_prob(model, tokenizer, input_text):
     logprobs = to_tokens_and_logprobs(model, tokenizer, input_text)
     sum = torch.sum(logprobs, dim=-1)
-    prob = torch.exp(sum)
-    return prob.cpu().numpy().tolist()[0]
+    return torch.exp(sum)
