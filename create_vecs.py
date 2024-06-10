@@ -112,6 +112,12 @@ def parse_args():
         help="Max memroy to allocate per gpu, you can also use 'auto'",
     )
     parser.add_argument(
+        "--dataset_split",
+        type=str,
+        default="test",
+        help="Dataset split to evaluate",
+    )
+    parser.add_argument(
         "--generations_path",
         type=str,
         default=None,
@@ -261,7 +267,7 @@ def main():
     if not os.path.exists(args.save_vecs_path):
         os.makedirs(args.save_vecs_path)
 
-    mbpp = MBPP()
+    mbpp = MBPP(args.dataset_split)
 
     total = len(generations)
     for idx, gens in enumerate(generations):
