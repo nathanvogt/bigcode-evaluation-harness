@@ -269,7 +269,7 @@ def main():
         gen = gens[0]
         gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         with torch.no_grad():
-            seq_prob = steering.seq_prob(model, tokenizer, gen)
+            seq_prob = steering.seq_log_prob(model, tokenizer, gen)
             probs.append(float(seq_prob))
 
         print(f"Completed {idx + 1}/{total}")
