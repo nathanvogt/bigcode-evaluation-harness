@@ -275,6 +275,8 @@ def main():
     if accelerator.is_main_process:
         print(f"Selected Tasks: {task_names}")
 
+    task = MBPP(args.dataset_split)
+
     results = {}
     details = {}
     if args.load_generations_path:
@@ -282,10 +284,12 @@ def main():
         if accelerator.is_main_process:
             print("evaluation only mode")
         evaluator = Evaluator(accelerator, None, None, args)
-        for task in task_names:
+        for task_name in task_names:
+            if task_name != "mbpp":
+                raise ValueError("Only MBPP task is supported")
             res, eval_details = evaluator.evaluate(task)
-            results[task] = res
-            details[task] = eval_details
+            results[task_name] = res
+            details[task_name] = eval_details
     else:
         # here we generate code and save it (evaluation is optional but True by default)
         dict_precisions = {
@@ -418,7 +422,6 @@ def main():
         for idx, task_name in enumerate(task_names):
             if task_name != "mbpp":
                 raise ValueError("Only MBPP task is supported")
-            task = MBPP(args.dataset_split)
             intermediate_generations = None
             if args.load_generations_intermediate_paths:
                 with open(args.load_generations_intermediate_paths[idx], "r") as f_in:
