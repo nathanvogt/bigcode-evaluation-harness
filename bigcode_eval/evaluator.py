@@ -101,8 +101,8 @@ class Evaluator:
         return generations, references
 
     def evaluate(self, task, intermediate_generations=None):
-        if task.requires_execution and not self.allow_code_execution:
-            raise ValueError(_WARNING)
+        # if task.requires_execution and not self.allow_code_execution:
+        #     raise ValueError(_WARNING)
 
         generations, references = self.generate_text(
             task, intermediate_generations=intermediate_generations
