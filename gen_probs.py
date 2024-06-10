@@ -267,7 +267,7 @@ def main():
     for idx, gens in enumerate(generations):
         print(f"Processing {idx + 1}/{total}...")
         gen = gens[0]
-        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
+        gen = mbpp.postprocess_generation(gen, idx, include_prompt=True)
         with torch.no_grad():
             seq_prob = steering.seq_log_prob(model, tokenizer, gen)
             probs.append(seq_prob)
