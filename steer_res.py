@@ -37,7 +37,7 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None):
     print(
         f"Without steering: {len(no_steer_passed)} passed, {len(no_steer_failed)} failed"
     )
-    print(f"With steering: {len(steer_passed)} passed, {len(steer_failed)} failed")
+    print(f"With steering:    {len(steer_passed)} passed, {len(steer_failed)} failed")
 
     failed_now_passing = set(no_steer_failed).intersection(steer_passed)
     passed_now_failing = set(no_steer_passed).intersection(steer_failed)
@@ -55,6 +55,9 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None):
 def plot_task_probabilities(
     probabilities, no_steer_passed, no_steer_failed, steer_passed, steer_failed
 ):
+    # print(f"len probs: {len(probabilities)}")
+    min_p = min([p for p in probabilities if p > 0])
+    probabilities = [p + min_p for p in probabilities]
     colors = [
         "green" if task in no_steer_passed else "red"
         for task in range(len(probabilities))
@@ -62,14 +65,31 @@ def plot_task_probabilities(
     edge_colors = [
         "green" if task in steer_passed else "red" for task in range(len(probabilities))
     ]
+    # probabilities = [
+    #     p if colors[i] == "red" and edge_colors[i] == "green" else 0
+    #     for i, p in enumerate(probabilities)
+    # ]
+    # print(len(colors), len(edge_colors))
+    # green_then_red = 0
+    # red_then_green = 0
+    # for i in range(len(colors)):
+    #     if colors[i] == "green" and edge_colors[i] == "red":
+    #         green_then_red += 1
+    #     elif colors[i] == "red" and edge_colors[i] == "green":
+    #         red_then_green += 1
+    # print(f"Green then red: {green_then_red}")
+    # print(f"Red then green: {red_then_green}")
 
     plt.scatter(
         range(len(probabilities)),
         probabilities,
+        s=50,
         color=colors,
         edgecolors=edge_colors,
         linewidth=2,
+        alpha=0.6,
     )
+    plt.yscale("log")
     plt.xlabel("Task Index")
     plt.ylabel("Probability")
     plt.title("Task Probability by Steering Results")

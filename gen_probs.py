@@ -260,11 +260,14 @@ def main():
     if os.path.exists(args.save_probs_path):
         raise ValueError(f"File already exists at {args.save_probs_path}")
 
+    mbpp = MBPP()
+
     probs = []
     total = len(generations)
     for idx, gens in enumerate(generations):
         print(f"Processing {idx + 1}/{total}...")
         gen = gens[0]
+        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         with torch.no_grad():
             seq_prob = steering.seq_prob(model, tokenizer, gen)
             probs.append(float(seq_prob))
