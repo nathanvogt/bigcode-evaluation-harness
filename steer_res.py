@@ -2,15 +2,11 @@ import json
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 
 def load_probabilities(file_path):
-    probabilities = []
-    with open(file_path, "r") as file:
-        for line in file:
-            prob = float(line.strip())
-            probabilities.append(prob)
-    return probabilities
+    return torch.load(file_path)
 
 
 def id_results(path: str):
