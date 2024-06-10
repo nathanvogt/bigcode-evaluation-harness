@@ -270,13 +270,12 @@ def main():
         gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         with torch.no_grad():
             seq_prob = steering.seq_log_prob(model, tokenizer, gen)
-            probs.append(float(seq_prob))
+            probs.append(seq_prob)
 
         print(f"Completed {idx + 1}/{total}")
 
-    with open(args.save_probs_path, "w") as fp:
-        for prob in probs:
-            fp.write(f"{prob:.50f}\n")
+    probs = torch.cat(probs)
+    torch.save(probs, args.save_probs_path)
 
 
 if __name__ == "__main__":
