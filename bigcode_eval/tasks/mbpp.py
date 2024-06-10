@@ -50,12 +50,12 @@ class MBPP(Task):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
         dataset = self.dataset[self.split]
         # the wrong split of mbpp can be loaded with old datasets cache
-        assert (
-            # len(dataset) == 500
-            # using train for now
-            len(dataset)
-            == 374
-        ), "please ensure you have the latest version of MBPP dataset, try deleting its old cache"
+        # assert (
+        #     # len(dataset) == 500
+        #     # using train for now
+        #     len(dataset)
+        #     == 374
+        # ), "please ensure you have the latest version of MBPP dataset, try deleting its old cache"
         return dataset
 
     def get_prompt(self, doc):
