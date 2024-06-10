@@ -224,6 +224,12 @@ def parse_args():
         help="Normalize steering vectors",
     )
     parser.add_argument(
+        "--scale_steering",
+        type=float,
+        default=None,
+        help="Scale steering vectors",
+    )
+    parser.add_argument(
         "--save_details_path",
         type=str,
         default=None,
@@ -326,6 +332,8 @@ def main():
                 vecs = steering.load_steering_vecs(steering_path, layers)
                 if args.norm_steering:
                     vecs = steering.normalize_steering_vectors(vecs)
+                if args.scale_steering:
+                    vecs = steering.scale_steering_vectors(args.scale_steering, vecs)
                 steering.apply_steering_vectors(model, vecs)
         elif args.modeltype == "seq2seq":
             warnings.warn(
