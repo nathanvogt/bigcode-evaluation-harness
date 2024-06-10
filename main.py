@@ -3,6 +3,7 @@ import fnmatch
 import json
 import warnings
 
+from bigcode_eval.tasks.mbpp import MBPP
 import datasets
 import torch
 import transformers
@@ -213,6 +214,12 @@ def parse_args():
         help="Don't run generation but benchmark groundtruth (useful for debugging)",
     )
     parser.add_argument(
+        "--dataset_split",
+        type=str,
+        default="test",
+        help="Dataset split to use for evaluation",
+    )
+    parser.add_argument(
         "--steering_path",
         type=str,
         default=None,
@@ -408,7 +415,10 @@ def main():
                 must pass equal number of files as number of tasks"
             )
 
-        for idx, task in enumerate(task_names):
+        for idx, task_name in enumerate(task_names):
+            if task_name != "mbpp":
+                raise ValueError("Only MBPP task is supported")
+            task = MBPP(args.dataset_split)
             intermediate_generations = None
             if args.load_generations_intermediate_paths:
                 with open(args.load_generations_intermediate_paths[idx], "r") as f_in:
@@ -423,10 +433,8 @@ def main():
                     task, intermediate_generations=intermediate_generations
                 )
                 if accelerator.is_main_process:
-                    save_generations_path = (
-                        f"{os.path.splitext(args.save_generations_path)[0]}_{task}.json"
-                    )
-                    save_references_path = f"references_{task}.json"
+                    save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task_name}.json"
+                    save_references_path = f"references_{task_name}.json"
                     evaluator.save_json_files(
                         generations,
                         references,
@@ -437,8 +445,8 @@ def main():
                 res, eval_details = evaluator.evaluate(
                     task, intermediate_generations=intermediate_generations
                 )
-                results[task] = res
-                details[task] = eval_details
+                results[task_name] = res
+                details[task_name] = eval_details
 
     # Save all args to config
     results["config"] = vars(args)

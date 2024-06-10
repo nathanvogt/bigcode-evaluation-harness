@@ -30,7 +30,7 @@ class MBPP(Task):
 
     DATASET_PATH = "mbpp"
 
-    def __init__(self):
+    def __init__(self, split: str = "test"):
         super().__init__(
             stop_words=[
                 "\nclass",
@@ -43,10 +43,12 @@ class MBPP(Task):
             ],
             requires_execution=True,
         )
+        self.split = split
+        self.task_name = "mbpp"
 
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
-        dataset = self.dataset["train"]
+        dataset = self.dataset[self.split]
         # the wrong split of mbpp can be loaded with old datasets cache
         assert (
             # len(dataset) == 500
@@ -77,7 +79,7 @@ class MBPP(Task):
         :param idx: int
             index of doc in the dataset to which the generation belongs
         """
-        prompt = self.get_prompt(self.dataset["train"][idx])
+        prompt = self.get_prompt(self.dataset[self.split][idx])
         generation = generation[len(prompt) :]
         return (
             prompt + self._stop_at_stop_token(generation, self.stop_words)
@@ -86,7 +88,7 @@ class MBPP(Task):
         )
 
     def get_solution(self, idx):
-        return self.dataset["train"][idx]["code"]
+        return self.dataset[self.split][idx]["code"]
 
     def process_results(self, generations, references):
         """Takes the list of LM generations and evaluates them against ground truth references,

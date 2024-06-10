@@ -8,6 +8,7 @@ from typing import List
 
 from bigcode_eval import tasks
 from bigcode_eval.generation import parallel_generations
+from bigcode_eval.tasks.mbpp import MBPP
 
 _WARNING = """
 ################################################################################
@@ -41,8 +42,7 @@ class Evaluator:
         # code evaluation permission
         self.allow_code_execution = args.allow_code_execution
 
-    def generate_text(self, task_name, intermediate_generations=None):
-        task = tasks.get_task(task_name, self.args)
+    def generate_text(self, task, intermediate_generations=None):
         dataset = task.get_dataset()
         # if args.limit is None, use all samples
         # if args.limit is used, make sure args.limit_start + args.limit <= len(dataset)
@@ -100,23 +100,22 @@ class Evaluator:
             )
         return generations, references
 
-    def evaluate(self, task_name, intermediate_generations=None):
-        task = tasks.get_task(task_name, self.args)
+    def evaluate(self, task, intermediate_generations=None):
         if task.requires_execution and not self.allow_code_execution:
             raise ValueError(_WARNING)
 
         generations, references = self.generate_text(
-            task_name, intermediate_generations=intermediate_generations
+            task, intermediate_generations=intermediate_generations
         )
 
         if self.accelerator.is_main_process:
             if not self.args.load_generations_path:
-                save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task_name}.json"
+                save_generations_path = f"{os.path.splitext(self.args.save_generations_path)[0]}_{task.task_name}.json"
                 self.save_json_files(
                     generations,
                     references,
                     save_generations_path,
-                    f"references_{task_name}.json",
+                    f"references_{task.task_name}.json",
                 )
 
             # make sure tokenizer plays nice with multiprocessing
