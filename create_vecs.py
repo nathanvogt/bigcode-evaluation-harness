@@ -1,8 +1,10 @@
 import os
 import json
+from bigcode_eval.generation import parallel_generations
 from bigcode_eval.tasks.mbpp import MBPP
 import torch
 
+from accelerate import Accelerator
 
 from transformers import (
     AutoModelForCausalLM,
@@ -265,6 +267,9 @@ def create_tokenizer(args):
 
 def main():
     args = parse_args()
+
+    accelerator = Accelerator()
+
     model = create_model(args)
     tokenizer = create_tokenizer(args)
     layers = steering.default_layers
@@ -319,8 +324,19 @@ def main():
                 steering_vecs.append(steer_vec)
 
                 steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
-                next_gen = steering.generate_one_completion(model, tokenizer, prompt)
-                generations.append(next_gen)
+                # next_gen = steering.generate_one_completion(model, tokenizer, prompt)
+                next_gen = parallel_generations(
+                    mbpp,
+                    mbpp.get_dataset(),
+                    accelerator,
+                    model,
+                    tokenizer,
+                    n_tasks=1,
+                    args=args,
+                    curr_sample_idx=idx,
+                )
+                print(f"\nnxet gen: \n{next_gen}\n")
+                generations.append(next_gen[0])
                 passed = (
                     mbpp.process_results(
                         [[next_gen]],
