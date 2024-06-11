@@ -108,10 +108,82 @@ def parse_args():
         help="Optional saving after every k tasks",
     )
     parser.add_argument(
+        "--postprocess",
+        action="store_false",
+        help="Postprocess model outputs before execution, always on except during generation tests",
+    )
+    parser.add_argument(
+        "--allow_code_execution",
+        action="store_true",
+        help="Allow code evaluation to execute external/untrusted Python code on your machine",
+    )
+    parser.add_argument(
+        "--generation_only",
+        action="store_true",
+        help="Do code generation but no evaluation",
+    )
+    parser.add_argument(
+        "--load_generations_path",
+        type=str,
+        default=None,
+        help="Path of file with previously generated solutions, if provided generation is skipped and only evaluation is done",
+    )
+    parser.add_argument(
+        "--load_data_path",
+        type=str,
+        default=None,
+        help="Path of additional data to load for the tasks",
+    )
+    parser.add_argument(
+        "--metric_output_path",
+        type=str,
+        default="evaluation_results.json",
+        help="Path to save the results",
+    )
+    parser.add_argument(
+        "--save_generations",
+        action="store_true",
+        help="Whether to save code generations",
+    )
+    parser.add_argument(
+        "--load_generations_intermediate_paths",
+        type=str,
+        nargs="*",
+        help="List of paths for saving the intermediate code generations",
+    )
+    parser.add_argument(
+        "--save_generations_path",
+        type=str,
+        default="generations.json",
+        help="Path for saving the code generations",
+    )
+    parser.add_argument(
+        "--save_references",
+        action="store_true",
+        help="Whether to save reference solutions/tests",
+    )
+    parser.add_argument(
+        "--save_references_path",
+        type=str,
+        default="references.json",
+        help="Path for saving the references solutions/tests",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default="prompt",
+        help="Prompt type to use for generation in HumanEvalPack tasks",
+    )
+    parser.add_argument(
         "--max_memory_per_gpu",
         type=str,
         default=None,
         help="Max memroy to allocate per gpu, you can also use 'auto'",
+    )
+    parser.add_argument(
+        "--check_references",
+        action="store_true",
+        help="Don't run generation but benchmark groundtruth (useful for debugging)",
     )
     parser.add_argument(
         "--dataset_split",
@@ -142,12 +214,6 @@ def parse_args():
         type=int,
         default=1,
         help="Number of iterations to extract steering vector",
-    )
-    parser.add_argument(
-        "--save_generations_path",
-        type=str,
-        default=None,
-        help="Path to save generations",
     )
     return parser.parse_args()
 
@@ -324,7 +390,6 @@ def main():
                 steering_vecs.append(steer_vec)
 
                 steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
-                # next_gen = steering.generate_one_completion(model, tokenizer, prompt)
                 next_gen = parallel_generations(
                     mbpp,
                     mbpp.get_dataset(),
@@ -335,11 +400,13 @@ def main():
                     args=args,
                     curr_sample_idx=idx,
                 )
-                print(f"\nnxet gen: \n{next_gen}\n")
-                generations.append(next_gen[0])
+                next_genn = mbpp.postprocess_generation(
+                    next_gen[0][0], idx, include_prompt=False
+                )
+                generations.append(next_genn)
                 passed = (
                     mbpp.process_results(
-                        [[next_gen]],
+                        [[next_genn]],
                         [reference],
                     )[
                         0
