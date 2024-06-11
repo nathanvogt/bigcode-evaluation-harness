@@ -290,8 +290,8 @@ def main():
         steering.clear_steering_vectors(model)
         prompt = mbpp.get_prompt(mbpp.get_dataset()[idx])
         gen = gens[0]
+        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         sol = mbpp.get_solution(idx)
-        sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
         reference = mbpp.get_reference(mbpp.get_dataset()[idx])
 
         def get_cum_vec(vecs):
@@ -307,13 +307,10 @@ def main():
         with torch.no_grad():
             while not passed and step < args.k:
                 step += 1
-                genn = mbpp.postprocess_generation(
-                    generations[-1], idx, include_prompt=False
-                )
                 if len(steering_vecs):
                     steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
                 gen_vecs = steering.create_steering_vectors(
-                    model, tokenizer, layers, genn, include_steering=True
+                    model, tokenizer, layers, generations[-1], include_steering=True
                 )
                 new_sol_vecs = steering.create_steering_vectors(
                     model, tokenizer, layers, sol, include_steering=True
@@ -326,15 +323,11 @@ def main():
                 generations.append(next_gen)
                 passed = (
                     mbpp.process_results(
-                        [
-                            [
-                                mbpp.postprocess_generation(
-                                    next_gen, idx, include_prompt=False
-                                )
-                            ]
-                        ],
+                        [[next_gen]],
                         [reference],
-                    )[0]["pass@1"]
+                    )[
+                        0
+                    ]["pass@1"]
                     == 1.0
                 )
 
@@ -354,8 +347,6 @@ def main():
                 json.dump(stuff, f)
         # clear tensors from gpu memory
         for vec in gen_vecs.values():
-            del vec
-        for vec in sol_vecs.values():
             del vec
         for vec in steer_vec.values():
             del vec
