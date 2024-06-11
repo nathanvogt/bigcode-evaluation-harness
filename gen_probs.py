@@ -112,6 +112,12 @@ def parse_args():
         help="Max memroy to allocate per gpu, you can also use 'auto'",
     )
     parser.add_argument(
+        "--dataset_split",
+        type=str,
+        default="test",
+        help="Dataset split to evaluate",
+    )
+    parser.add_argument(
         "--steering_path",
         type=str,
         default=None,
@@ -260,7 +266,7 @@ def main():
     if os.path.exists(args.save_probs_path):
         raise ValueError(f"File already exists at {args.save_probs_path}")
 
-    mbpp = MBPP()
+    mbpp = MBPP(args.dataset_split)
 
     probs = []
     total = len(generations)
@@ -268,9 +274,12 @@ def main():
         print(f"Processing {idx + 1}/{total}...")
         gen = gens[0]
         gen = mbpp.postprocess_generation(gen, idx, include_prompt=True)
+        prompt = mbpp.get_prompt(mbpp.get_dataset()[idx])
         with torch.no_grad():
             seq_prob = steering.seq_log_prob(model, tokenizer, gen)
-            probs.append(seq_prob)
+            prompt_prob = steering.seq_log_prob(model, tokenizer, prompt)
+            conditional_prob = seq_prob - prompt_prob
+            probs.append(conditional_prob)
 
         print(f"Completed {idx + 1}/{total}")
 

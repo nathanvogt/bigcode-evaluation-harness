@@ -135,6 +135,18 @@ def parse_args():
         default=None,
         help="Path to save steering vectors",
     )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=1,
+        help="Number of iterations to extract steering vector",
+    )
+    parser.add_argument(
+        "--save_generations_path",
+        type=str,
+        default=None,
+        help="Path to save generations",
+    )
     return parser.parse_args()
 
 
@@ -267,20 +279,79 @@ def main():
     if not os.path.exists(args.save_vecs_path):
         os.makedirs(args.save_vecs_path)
 
+    if args.save_generations_path and not os.path.exists(args.save_generations_path):
+        os.makedirs(args.save_generations_path)
+
     mbpp = MBPP(args.dataset_split)
 
     total = len(generations)
     for idx, gens in enumerate(generations):
         print(f"Processing {idx + 1}/{total}...")
+        steering.clear_steering_vectors(model)
+        prompt = mbpp.get_prompt(mbpp.get_dataset()[idx])
         gen = gens[0]
-        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
         sol = mbpp.get_solution(idx)
+        sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
+        reference = mbpp.get_reference(mbpp.get_dataset()[idx])
+
+        def get_cum_vec(vecs):
+            summed_vecs = vecs[0]
+            for vec in vecs[1:]:
+                summed_vecs = steering.add_steering_vectors(summed_vecs, vec)
+            return steering.normalize_steering_vectors(summed_vecs)
+
+        generations = [gen]
+        steering_vecs = []
+        passed = False
+        step = 0
         with torch.no_grad():
-            gen_vecs = steering.create_steering_vectors(model, tokenizer, layers, gen)
-            sol_vecs = steering.create_steering_vectors(model, tokenizer, layers, sol)
-            steer_vec = steering.subtract_steering_vectors(sol_vecs, gen_vecs)
-        save_path = os.path.join(args.save_vecs_path, f"{idx}")
-        steering.save_steering_vecs(save_path, steer_vec)
+            while not passed and step < args.k:
+                step += 1
+                genn = mbpp.postprocess_generation(
+                    generations[-1], idx, include_prompt=False
+                )
+                if len(steering_vecs):
+                    steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
+                gen_vecs = steering.create_steering_vectors(
+                    model, tokenizer, layers, genn, include_steering=True
+                )
+                new_sol_vecs = steering.create_steering_vectors(
+                    model, tokenizer, layers, sol, include_steering=True
+                )
+                steer_vec = steering.subtract_steering_vectors(new_sol_vecs, gen_vecs)
+                steering_vecs.append(steer_vec)
+
+                steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
+                next_gen = steering.generate_one_completion(model, tokenizer, prompt)
+                generations.append(next_gen)
+                passed = (
+                    mbpp.process_results(
+                        [
+                            [
+                                mbpp.postprocess_generation(
+                                    next_gen, idx, include_prompt=False
+                                )
+                            ]
+                        ],
+                        [reference],
+                    )[0]["pass@1"]
+                    == 1.0
+                )
+
+        for i, vec in enumerate(steering_vecs):
+            save_path = os.path.join(args.save_vecs_path, f"{idx}", f"{i+1}")
+            steering.save_steering_vecs(save_path, vec)
+        if args.save_generations_path:
+            save_path = os.path.join(args.save_generations_path, f"{idx}.txt")
+            with open(save_path, "w") as f:
+                stuff = {
+                    "k": args.k,
+                    "passed": bool(passed),
+                    "generations": generations,
+                    "prompt": prompt,
+                    "solution": sol,
+                }
+                json.dump(stuff, f)
         # clear tensors from gpu memory
         for vec in gen_vecs.values():
             del vec

@@ -97,16 +97,17 @@ def generate_one_completion(model, tokenizer, prompt):
             "content": f"Correctly implement the python function. No explanations. Only code. Don't put quotations.\n\n{prompt}",
         },
     ]
-    input_ids = tokenizer.apply_chat_template(
-        messages, add_generation_prompt=True, return_tensors="pt"
-    ).to(model.device)
+    # input_ids = tokenizer.apply_chat_template(
+    #     messages, add_generation_prompt=True, return_tensors="pt"
+    # ).to(model.device)
+    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
     terminators = [
         tokenizer.eos_token_id,
         tokenizer.convert_tokens_to_ids("<|eot_id|>"),
     ]
     outputs = model.generate(
         input_ids,
-        max_new_tokens=128,
+        max_new_tokens=512,
         eos_token_id=terminators,
         do_sample=False,
         use_cache=False,

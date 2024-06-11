@@ -49,7 +49,12 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None):
 
 
 def plot_task_probabilities(
-    probabilities, no_steer_passed, no_steer_failed, steer_passed, steer_failed
+    probabilities,
+    no_steer_passed,
+    no_steer_failed,
+    steer_passed,
+    steer_failed,
+    filter=False,
 ):
     colors = [
         "green" if task in no_steer_passed else "red"
@@ -58,24 +63,25 @@ def plot_task_probabilities(
     edge_colors = [
         "green" if task in steer_passed else "red" for task in range(len(probabilities))
     ]
-    probabilities = [
-        probabilities[i]
-        for i in range(len(probabilities))
-        if (i in no_steer_passed and i in steer_failed)
-        or (i in no_steer_failed and i in steer_passed)
-    ]
-    colors = [
-        colors[i]
-        for i in range(len(colors))
-        if (i in no_steer_passed and i in steer_failed)
-        or (i in no_steer_failed and i in steer_passed)
-    ]
-    edge_colors = [
-        edge_colors[i]
-        for i in range(len(edge_colors))
-        if (i in no_steer_passed and i in steer_failed)
-        or (i in no_steer_failed and i in steer_passed)
-    ]
+    if filter:
+        probabilities = [
+            probabilities[i]
+            for i in range(len(probabilities))
+            if (i in no_steer_passed and i in steer_failed)
+            or (i in no_steer_failed and i in steer_passed)
+        ]
+        colors = [
+            colors[i]
+            for i in range(len(colors))
+            if (i in no_steer_passed and i in steer_failed)
+            or (i in no_steer_failed and i in steer_passed)
+        ]
+        edge_colors = [
+            edge_colors[i]
+            for i in range(len(edge_colors))
+            if (i in no_steer_passed and i in steer_failed)
+            or (i in no_steer_failed and i in steer_passed)
+        ]
 
     plt.scatter(
         range(len(probabilities)),
@@ -86,10 +92,30 @@ def plot_task_probabilities(
         linewidth=2,
         alpha=0.6,
     )
-    # plt.yscale("log")
     plt.xlabel("Task Index")
-    plt.ylabel("Probability")
-    plt.title("Task Probability by Steering Results")
+    plt.ylabel("Log Probability")
+    plt.title("Task Probability by Result")
+
+    plt.scatter([], [], color="green", label="Both Passed")
+    plt.scatter([], [], color="red", label="Both Failed")
+    plt.scatter(
+        [],
+        [],
+        color="green",
+        edgecolors="red",
+        label="Passed but Steering Failed",
+        linewidth=2,
+    )
+    plt.scatter(
+        [],
+        [],
+        color="red",
+        edgecolors="green",
+        label="Failed but Steering Passed",
+        linewidth=2,
+    )
+    plt.legend(title="Legend", loc="best")
+
     plt.show()
 
 
