@@ -418,7 +418,7 @@ def main():
             save_path = os.path.join(args.save_vecs_path, f"{idx}", f"{i+1}")
             steering.save_steering_vecs(save_path, vec)
         if args.save_generations_path:
-            save_path = os.path.join(args.save_generations_path, f"{idx}.txt")
+            save_path = os.path.join(args.save_generations_path, f"{idx}.json")
             with open(save_path, "w") as f:
                 stuff = {
                     "k": args.k,
