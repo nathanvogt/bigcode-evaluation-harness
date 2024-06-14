@@ -51,7 +51,7 @@ def main():
     def on_press(key):
         try:
             if key == keyboard.Key.right:
-                current_index[0] = current_index[0] + 1 % len(sorted_results)
+                current_index[0] = (current_index[0] + 1) % len(sorted_results)
                 print_result(current_index[0], sorted_results[current_index[0]])
             elif key == keyboard.Key.left:
                 current_index[0] = (current_index[0] - 1 + len(sorted_results)) % len(

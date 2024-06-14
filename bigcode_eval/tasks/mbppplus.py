@@ -53,10 +53,30 @@ class MBPPPlus(MBPP):
             return "\n".join(doc["test_list"])
         return "\n" + doc["test"]
 
+    def get_solution(self, idx):
+        """Returns the solution for the task with the given index."""
+        doc = self.dataset["test"][idx]
+        return doc["test"]
+
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
         dataset = self.dataset["test"]
         return dataset
+
+    def postprocess_generation(self, generation, idx, include_prompt=True):
+        """Defines the postprocessing for a LM generation.
+        :param generation: str
+            code generation from LM
+        :param idx: int
+            index of doc in the dataset to which the generation belongs
+        """
+        prompt = self.get_prompt(self.dataset["test"][idx])
+        generation = generation[len(prompt) :]
+        return (
+            prompt + self._stop_at_stop_token(generation, self.stop_words)
+            if include_prompt
+            else self._stop_at_stop_token(generation, self.stop_words)
+        )
 
     def process_results(self, generations, references):
         """Takes the list of LM generations and evaluates them against ground truth references,

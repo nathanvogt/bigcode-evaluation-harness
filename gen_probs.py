@@ -1,9 +1,12 @@
 import os
 import json
+from bigcode_eval.tasks import ALL_TASKS
 from bigcode_eval.tasks.mbpp import MBPP
 import torch
 
 
+from bigcode_eval.tasks.mbppplus import MBPPPlus
+from main import MultiChoice
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -22,6 +25,11 @@ def parse_args():
         "--model",
         default="codeparrot/codeparrot-small",
         help="Model to evaluate, provide a repo name in Hugging Face hub or a local path",
+    )
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="mbpp",
     )
     parser.add_argument(
         "--modeltype",
@@ -266,7 +274,7 @@ def main():
     if os.path.exists(args.save_probs_path):
         raise ValueError(f"File already exists at {args.save_probs_path}")
 
-    mbpp = MBPP(args.dataset_split)
+    mbpp = MBPP(args.dataset_split) if args.task == "mbpp" else MBPPPlus()
 
     probs = []
     total = len(generations)

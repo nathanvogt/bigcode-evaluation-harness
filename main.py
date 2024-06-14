@@ -4,6 +4,7 @@ import json
 import warnings
 
 from bigcode_eval.tasks.mbpp import MBPP
+from bigcode_eval.tasks.mbppplus import MBPPPlus
 import datasets
 import torch
 import transformers
@@ -275,7 +276,13 @@ def main():
     if accelerator.is_main_process:
         print(f"Selected Tasks: {task_names}")
 
-    task = MBPP(args.dataset_split)
+    task = (
+        MBPP(args.dataset_split)
+        if task_names[0] == "mbpp"
+        else MBPPPlus(args.dataset_split) if task_names[0] == "mbppplus" else None
+    )
+    if task == None:
+        raise ValueError("Only MBPP or MBPP+ tasks are supported")
 
     results = {}
     details = {}
@@ -285,8 +292,8 @@ def main():
             print("evaluation only mode")
         evaluator = Evaluator(accelerator, None, None, args)
         for task_name in task_names:
-            if task_name != "mbpp":
-                raise ValueError("Only MBPP task is supported")
+            if task_name != "mbpp" and task_name != "mbppplus":
+                raise ValueError("Only MBPP or MBPP+ tasks are supported")
             res, eval_details = evaluator.evaluate(task)
             results[task_name] = res
             details[task_name] = eval_details
@@ -420,8 +427,8 @@ def main():
             )
 
         for idx, task_name in enumerate(task_names):
-            if task_name != "mbpp":
-                raise ValueError("Only MBPP task is supported")
+            if task_name != "mbpp" and task_name != "mbppplus":
+                raise ValueError("Only MBPP or MBPP+ task is supported")
             intermediate_generations = None
             if args.load_generations_intermediate_paths:
                 with open(args.load_generations_intermediate_paths[idx], "r") as f_in:

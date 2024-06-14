@@ -6,6 +6,7 @@ import torch
 
 from accelerate import Accelerator
 
+from bigcode_eval.tasks.mbppplus import MBPPPlus
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -29,6 +30,11 @@ def parse_args():
         "--modeltype",
         default="causal",
         help="AutoModel to use, it can be causal or seq2seq",
+    )
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="mbpp",
     )
     parser.add_argument(
         "--peft_model",
@@ -353,7 +359,7 @@ def main():
     if args.save_generations_path and not os.path.exists(args.save_generations_path):
         os.makedirs(args.save_generations_path)
 
-    mbpp = MBPP(args.dataset_split)
+    mbpp = MBPP(args.dataset_split) if args.task == "mbpp" else MBPPPlus()
 
     total = len(generations)
     for idx, gens in enumerate(generations):
