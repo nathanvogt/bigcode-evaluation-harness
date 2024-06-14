@@ -124,14 +124,14 @@ def save_steering_vecs(save_path: str, vecs: Dict):
         torch.save(layer_vec, os.path.join(save_path, f"{layer_index}.pt"))
 
 
-def load_steering_vecs(folder_path: str, layers=None):
+def load_steering_vecs(folder_path: str, layers=None, device="cuda"):
     res = dict()
     for file_name in os.listdir(folder_path):
         layer_index = int(file_name.split(".")[0])
         if layers is not None and layer_index not in layers:
             continue
         vec = torch.load(
-            f"{folder_path}/{file_name}", map_location=torch.device("cuda")
+            f"{folder_path}/{file_name}", map_location=torch.device(device)
         )
         vec = vec.to(torch.float16)
         res[layer_index] = vec

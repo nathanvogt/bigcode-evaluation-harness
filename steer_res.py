@@ -26,7 +26,7 @@ def id_results(path: str):
     return passed_ids, failed_ids
 
 
-def compare_steering_results(no_steer_path, steer_path, probs_path=None):
+def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=False):
     no_steer_passed, no_steer_failed = id_results(no_steer_path)
     steer_passed, steer_failed = id_results(steer_path)
 
@@ -41,11 +41,42 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None):
     print(f"Failed but now passing with steering: {len(failed_now_passing)}")
     print(f"Passed but now failing with steering: {len(passed_now_failing)}")
 
+    def accuracy_at_threshold(threshold, probabilities):
+        correct = 0
+        failed = 0
+        for i, p in enumerate(probabilities):
+            if p >= threshold:
+                if i in no_steer_passed:
+                    correct += 1
+                else:
+                    failed += 1
+            else:
+                if i in steer_passed:
+                    correct += 1
+                else:
+                    failed += 1
+        return correct / (correct + failed)
+
+    def find_max_accuracy(probabilities):
+        max_accuracy = 0
+        for thresh in probabilities:
+            accuracy = accuracy_at_threshold(thresh, probabilities)
+            if accuracy > max_accuracy:
+                max_accuracy = accuracy
+        return max_accuracy
+
     if probs_path:
         probabilities = load_probabilities(probs_path)
-        plot_task_probabilities(
-            probabilities, no_steer_passed, no_steer_failed, steer_passed, steer_failed
-        )
+        max_accuracy = find_max_accuracy(probabilities)
+        print(f"Max accuracy: {max_accuracy}")
+        if plot:
+            plot_task_probabilities(
+                probabilities,
+                no_steer_passed,
+                no_steer_failed,
+                steer_passed,
+                steer_failed,
+            )
 
 
 def plot_task_probabilities(
@@ -143,8 +174,11 @@ def main():
     parser.add_argument("--no_steer_path", type=str, required=True)
     parser.add_argument("--steer_path", type=str, required=True)
     parser.add_argument("--probs_path", type=str, required=False)
+    parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
-    compare_steering_results(args.no_steer_path, args.steer_path, args.probs_path)
+    compare_steering_results(
+        args.no_steer_path, args.steer_path, args.probs_path, args.plot
+    )
 
 
 if __name__ == "__main__":
