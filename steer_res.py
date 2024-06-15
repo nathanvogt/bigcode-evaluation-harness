@@ -9,7 +9,7 @@ def load_probabilities(file_path):
     return torch.load(file_path)
 
 
-def id_results(path: str):
+def id_results(path: str, flip=False):
     failed_ids = []
     passed_ids = []
     with open(path, "r") as f:
@@ -24,6 +24,8 @@ def id_results(path: str):
     for mbpp_result in mbpp_results.values():
         _, result = mbpp_result[0]
         task_id = result["task_id"]
+        if flip:
+            task_id = 378 - task_id
         passed = result["passed"]
         if passed:
             passed_ids.append(task_id)
@@ -34,7 +36,9 @@ def id_results(path: str):
 
 def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=False):
     no_steer_passed, no_steer_failed = id_results(no_steer_path)
-    steer_passed, steer_failed = id_results(steer_path)
+    # print(f"no steer passed:\n{no_steer_passed}")
+    # print(f"no steer failed:\n{no_steer_failed}")
+    steer_passed, steer_failed = id_results(steer_path, flip=False)
 
     print(
         f"Without steering: {len(no_steer_passed)} passed, {len(no_steer_failed)} failed"
