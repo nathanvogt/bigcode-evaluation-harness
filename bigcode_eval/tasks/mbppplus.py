@@ -56,7 +56,7 @@ class MBPPPlus(MBPP):
     def get_solution(self, idx):
         """Returns the solution for the task with the given index."""
         doc = self.dataset["test"][idx]
-        return doc["test"]
+        return doc["code"]
 
     def get_dataset(self):
         """Returns dataset for the task or an iterable of any object, that get_prompt can handle"""
