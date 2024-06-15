@@ -14,7 +14,13 @@ def id_results(path: str):
     passed_ids = []
     with open(path, "r") as f:
         results = json.load(f)
-    mbpp_results = results["mbpp"]
+    mbpp_results = (
+        results["mbppplus"]
+        if "mbppplus" in path
+        else results["mbpp"] if "mbpp" in path else None
+    )
+    if mbpp_results is None:
+        raise ValueError("No MBPP or MBPP+ results found in file")
     for mbpp_result in mbpp_results.values():
         _, result = mbpp_result[0]
         task_id = result["task_id"]

@@ -86,9 +86,9 @@ class MBPPPlus(MBPP):
         :param references: list(str)
             list of str containing refrences
         """
-        results, _ = compute_code_eval(
+        results, details = compute_code_eval(
             references=references,
             predictions=generations,
             timeout=10.0,  # 10s timeout
         )
-        return results
+        return results, details
