@@ -42,7 +42,7 @@ class Evaluator:
         # code evaluation permission
         self.allow_code_execution = args.allow_code_execution
 
-    def generate_text(self, task, intermediate_generations=None):
+    def generate_text(self, task, intermediate_generations=None, included_ids=None):
         dataset = task.get_dataset()
         # if args.limit is None, use all samples
         # if args.limit is used, make sure args.limit_start + args.limit <= len(dataset)
@@ -91,6 +91,7 @@ class Evaluator:
             save_every_k_tasks=self.args.save_every_k_tasks,
             intermediate_generations=curr_generations,
             intermediate_save_generations_path=intermediate_save_generations_path,
+            included_ids=included_ids,
         )
 
         if len(generations[0]) > self.args.n_samples:

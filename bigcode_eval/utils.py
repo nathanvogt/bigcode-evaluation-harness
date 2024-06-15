@@ -255,6 +255,11 @@ def complete_code(
             n_tasks * dataloader.dataset.n_copies / accelerator.num_processes
         ),
     ):
+        if (
+            gen_kwargs["included_ids"] is not None
+            and step not in gen_kwargs["included_ids"]
+        ):
+            continue
         with torch.no_grad():
             if task.stop_words:
                 # Set the start_length after which to check for stopping to be the longest input ignoring padding
@@ -268,7 +273,11 @@ def complete_code(
                     batch["input_len"].max().item()
                 )
 
-            inputs = batch["ids"][:, : batch["input_len"]] if tokenizer.padding_side == "right" else batch["ids"]
+            inputs = (
+                batch["ids"][:, : batch["input_len"]]
+                if tokenizer.padding_side == "right"
+                else batch["ids"]
+            )
             if "ids_encoder" in batch:
                 if is_wrapped:
                     generated_tokens = accelerator.unwrap_model(model).generate(
@@ -365,7 +374,7 @@ def update_code_gens(
     postprocess,
     code_gens,
     gen_token_dict,
-):  
+):
     for sample, generated_tokens in gen_token_dict.items():
         for s in generated_tokens:
             if INFILL_MODE or tokenizer.eos_token in task.stop_words:
@@ -382,7 +391,7 @@ def update_code_gens(
                     # some tokenizers add a multi-token prefix to the generation (e.g ChatGLM)
                     tokenizer_prefix = tokenizer.decode(tokenizer.get_prefix_tokens())
                     if gen_code.startswith(f"{tokenizer_prefix}"):
-                        gen_code = gen_code[len(tokenizer_prefix):].lstrip()
+                        gen_code = gen_code[len(tokenizer_prefix) :].lstrip()
                 except:
                     pass
                 if INFILL_MODE:
@@ -423,6 +432,6 @@ def remove_after_return(code):
             and start_match < len(code)
             and code[start_match].strip() != ""
         ):
-            return code[0: start_match]
+            return code[0:start_match]
         end_last_match = end_match
     return code

@@ -22,7 +22,7 @@ from bigcode_eval.tasks import ALL_TASKS
 
 import steering
 
-include_ids = []
+exclude_ids = []
 
 
 class MultiChoice:
@@ -441,13 +441,11 @@ def main():
             if args.generation_only:
                 if accelerator.is_main_process:
                     print("generation mode only")
-                if include_ids is not None and idx not in include_ids:
-                    generations = []
-                    references = []
-                else:
-                    generations, references = evaluator.generate_text(
-                        task, intermediate_generations=intermediate_generations
-                    )
+                generations, references = evaluator.generate_text(
+                    task,
+                    intermediate_generations=intermediate_generations,
+                    included_ids=[2, 3],
+                )
                 if accelerator.is_main_process:
                     save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task_name}.json"
                     save_references_path = f"references_{task_name}.json"

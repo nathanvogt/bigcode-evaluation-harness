@@ -12,6 +12,7 @@ from bigcode_eval.utils import TokenizedDataset, complete_code
 
 class EndOfFunctionCriteria(StoppingCriteria):
     """Custom `StoppingCriteria` which checks if all generated functions in the batch are completed."""
+
     def __init__(self, start_length, eof_strings, tokenizer, check_fn=None):
         self.start_length = start_length
         self.eof_strings = eof_strings
@@ -24,8 +25,16 @@ class EndOfFunctionCriteria(StoppingCriteria):
 
     def __call__(self, input_ids, scores, **kwargs):
         """Returns true if all generated sequences contain any of the end-of-function strings."""
-        decoded_generations = self.tokenizer.batch_decode(input_ids[:, self.start_length :])
-        return all([self.check_fn(decoded_generation) for decoded_generation in decoded_generations])
+        decoded_generations = self.tokenizer.batch_decode(
+            input_ids[:, self.start_length :]
+        )
+        return all(
+            [
+                self.check_fn(decoded_generation)
+                for decoded_generation in decoded_generations
+            ]
+        )
+
 
 class TooLongFunctionCriteria(StoppingCriteria):
     """Custom `StoppingCriteria` which checks if the generated function is too long by a certain multiplier based on input length."""
@@ -37,20 +46,21 @@ class TooLongFunctionCriteria(StoppingCriteria):
     def __call__(self, input_ids, scores, **kwargs):
         """Returns true if generated sequence is too long."""
         return input_ids.shape[1] > int(self.input_length * self.multiplier)
-        
+
 
 def parallel_generations(
-        task,
-        dataset,
-        accelerator,
-        model,
-        tokenizer,
-        n_tasks,
-        args,
-        curr_sample_idx: int = 0,
-        save_every_k_tasks: int = -1,
-        intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
-        intermediate_save_generations_path: Optional[str] = None,
+    task,
+    dataset,
+    accelerator,
+    model,
+    tokenizer,
+    n_tasks,
+    args,
+    curr_sample_idx: int = 0,
+    save_every_k_tasks: int = -1,
+    intermediate_generations: Optional[List[Optional[List[Optional[str]]]]] = None,
+    intermediate_save_generations_path: Optional[str] = None,
+    included_ids=None,
 ):
     if args.load_generations_path:
         # load generated code
@@ -71,25 +81,22 @@ def parallel_generations(
         "top_p": args.top_p,
         "top_k": args.top_k,
         "max_length": args.max_length_generation,
+        "included_ids": included_ids,
     }
     stopping_criteria = []
     # The input_length / start_length set to 0 for now will be adjusted later
     # Check if the task has a custom check_fn method for the stopping criteria
     if task.stop_words and tokenizer.eos_token:
-        task.stop_words.append(tokenizer.eos_token)    
+        task.stop_words.append(tokenizer.eos_token)
     if hasattr(task, "check_fn"):
         stopping_criteria.append(
             EndOfFunctionCriteria(0, task.stop_words, tokenizer, task.check_fn)
         )
     elif task.stop_words:
-        stopping_criteria.append(
-            EndOfFunctionCriteria(0, task.stop_words, tokenizer)
-        )
+        stopping_criteria.append(EndOfFunctionCriteria(0, task.stop_words, tokenizer))
     if hasattr(task, "max_length_multiplier") and task.max_length_multiplier:
-        stopping_criteria.append(
-            TooLongFunctionCriteria(0, task.max_length_multiplier)
-        )
-    
+        stopping_criteria.append(TooLongFunctionCriteria(0, task.max_length_multiplier))
+
     if stopping_criteria:
         gen_kwargs["stopping_criteria"] = StoppingCriteriaList(stopping_criteria)
 
