@@ -3,6 +3,7 @@ import fnmatch
 import json
 import warnings
 
+from bigcode_eval.generation import parallel_generations
 from bigcode_eval.tasks.mbpp import MBPP
 from bigcode_eval.tasks.mbppplus import MBPPPlus
 import datasets
@@ -22,7 +23,7 @@ from bigcode_eval.tasks import ALL_TASKS
 
 import steering
 
-exclude_ids = []
+include_ids = []
 
 
 class MultiChoice:
@@ -431,6 +432,7 @@ def main():
         for idx, task_name in enumerate(task_names):
             if task_name != "mbpp" and task_name != "mbppplus":
                 raise ValueError("Only MBPP or MBPP+ task is supported")
+
             intermediate_generations = None
             if args.load_generations_intermediate_paths:
                 with open(args.load_generations_intermediate_paths[idx], "r") as f_in:
@@ -441,11 +443,32 @@ def main():
             if args.generation_only:
                 if accelerator.is_main_process:
                     print("generation mode only")
-                generations, references = evaluator.generate_text(
-                    task,
-                    intermediate_generations=intermediate_generations,
-                    included_ids=[2, 3],
-                )
+                # generations, references = evaluator.generate_text(
+                #     task,
+                #     intermediate_generations=intermediate_generations,
+                #     included_ids=[2, 3],
+                # )
+                generations = []
+                references = []
+                dataset = task.get_dataset()
+                for idx, doc in enumerate(dataset):
+                    if include_ids is not None and idx not in include_ids:
+                        generations.append([])
+                        references.append("")
+                        continue
+                    gen = parallel_generations(
+                        task,
+                        task.get_dataset(),
+                        accelerator,
+                        model,
+                        tokenizer,
+                        n_tasks=1,
+                        args=args,
+                        curr_sample_idx=idx,
+                    )[0][0]
+                    ref = task.get_reference(doc)
+                    generations.append([gen])
+                    references.append(ref)
                 if accelerator.is_main_process:
                     save_generations_path = f"{os.path.splitext(args.save_generations_path)[0]}_{task_name}.json"
                     save_references_path = f"references_{task_name}.json"
