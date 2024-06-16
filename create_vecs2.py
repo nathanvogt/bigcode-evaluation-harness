@@ -1,5 +1,6 @@
 import os
 import json
+from bigcode_eval.evaluator import Evaluator
 from bigcode_eval.generation import parallel_generations
 from bigcode_eval.tasks.mbpp import MBPP
 import torch
@@ -7,6 +8,7 @@ import torch
 from accelerate import Accelerator
 
 from bigcode_eval.tasks.mbppplus import MBPPPlus
+from steer_res import id_results
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -16,6 +18,279 @@ from transformers import (
 from bigcode_eval.arguments import EvalArguments
 
 import steering
+
+train_ids = [
+    327,
+    57,
+    12,
+    140,
+    125,
+    114,
+    71,
+    52,
+    346,
+    279,
+    44,
+    302,
+    216,
+    16,
+    15,
+    47,
+    111,
+    119,
+    258,
+    308,
+    13,
+    287,
+    101,
+    332,
+    368,
+    214,
+    112,
+    229,
+    301,
+    142,
+    3,
+    81,
+    365,
+    174,
+    348,
+    79,
+    110,
+    172,
+    370,
+    362,
+    194,
+    49,
+    183,
+    176,
+    309,
+    135,
+    22,
+    235,
+    274,
+    63,
+    193,
+    40,
+    282,
+    150,
+    321,
+    316,
+    185,
+    295,
+    98,
+    35,
+    23,
+    116,
+    148,
+    326,
+    360,
+    51,
+    337,
+    343,
+    232,
+    186,
+    83,
+    189,
+    181,
+    107,
+    136,
+    36,
+    87,
+    273,
+    373,
+    307,
+    236,
+    311,
+    138,
+    285,
+    351,
+    166,
+    28,
+    117,
+    364,
+    161,
+    205,
+    137,
+    33,
+    108,
+    288,
+    284,
+    255,
+    202,
+    234,
+    73,
+    354,
+    371,
+    126,
+    134,
+    219,
+    204,
+    323,
+    293,
+    70,
+    260,
+    252,
+    46,
+    24,
+    56,
+    78,
+    369,
+    345,
+    32,
+    197,
+    195,
+    239,
+    128,
+    5,
+    344,
+    184,
+    29,
+    254,
+    226,
+    286,
+    192,
+    68,
+    196,
+    164,
+    349,
+    291,
+    75,
+    361,
+    314,
+    322,
+    0,
+    253,
+    224,
+    237,
+    67,
+    256,
+    359,
+    45,
+    129,
+    27,
+    222,
+    160,
+    76,
+    215,
+    163,
+    230,
+    155,
+    50,
+    39,
+    95,
+    333,
+    41,
+    320,
+    199,
+    277,
+    238,
+    153,
+    82,
+    299,
+    4,
+    243,
+    92,
+    206,
+    263,
+    61,
+    14,
+    272,
+    145,
+    20,
+    21,
+    187,
+    124,
+    17,
+    296,
+    303,
+    268,
+    377,
+    168,
+    121,
+    374,
+]
+initially_train_failing = [
+    140,
+    71,
+    52,
+    346,
+    279,
+    119,
+    308,
+    13,
+    332,
+    112,
+    301,
+    3,
+    81,
+    370,
+    362,
+    194,
+    135,
+    63,
+    193,
+    321,
+    316,
+    295,
+    98,
+    35,
+    116,
+    148,
+    326,
+    360,
+    343,
+    107,
+    136,
+    87,
+    373,
+    236,
+    285,
+    351,
+    166,
+    364,
+    33,
+    288,
+    284,
+    73,
+    371,
+    126,
+    134,
+    204,
+    323,
+    293,
+    70,
+    260,
+    56,
+    197,
+    195,
+    239,
+    254,
+    226,
+    286,
+    68,
+    291,
+    361,
+    322,
+    253,
+    224,
+    67,
+    45,
+    129,
+    27,
+    163,
+    39,
+    199,
+    299,
+    4,
+    206,
+    263,
+    61,
+    14,
+    377,
+    168,
+    374,
+]
 
 
 def parse_args():
@@ -261,17 +536,8 @@ def create_model(args):
         print(f"Loading model in {args.precision}")
         model_kwargs["torch_dtype"] = dict_precisions[args.precision]
 
-        # if args.max_memory_per_gpu:
-        #     if args.max_memory_per_gpu != "auto":
-        #         model_kwargs["max_memory"] = get_gpus_max_memory(
-        #             args.max_memory_per_gpu, accelerator.num_processes
-        #         )
-        #         model_kwargs["offload_folder"] = "offload"
-        #     else:
-        #         model_kwargs["device_map"] = "auto"
-        #         print("Loading model in auto mode")
-
     if args.modeltype == "causal":
+        model_kwargs["device_map"] = "cuda"
         layers = steering.default_layers
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
@@ -359,172 +625,71 @@ def main():
     if args.save_generations_path and not os.path.exists(args.save_generations_path):
         os.makedirs(args.save_generations_path)
 
-    mbpp = MBPP(args.dataset_split) if args.task == "mbpp" else MBPPPlus()
+    task = MBPP(args.dataset_split) if args.task == "mbpp" else MBPPPlus()
 
-    mbppplus_train_failed_ids = [
-        140,
-        71,
-        52,
-        346,
-        279,
-        119,
-        308,
-        13,
-        332,
-        112,
-        301,
-        3,
-        81,
-        370,
-        362,
-        194,
-        135,
-        63,
-        193,
-        321,
-        316,
-        295,
-        98,
-        35,
-        116,
-        148,
-        326,
-        360,
-        343,
-        107,
-        136,
-        87,
-        373,
-        236,
-        285,
-        351,
-        166,
-        364,
-        33,
-        288,
-        284,
-        73,
-        371,
-        126,
-        134,
-        204,
-        323,
-        293,
-        70,
-        260,
-        56,
-        197,
-        195,
-        239,
-        254,
-        226,
-        286,
-        68,
-        291,
-        361,
-        322,
-        253,
-        224,
-        67,
-        45,
-        129,
-        27,
-        163,
-        39,
-        199,
-        299,
-        4,
-        206,
-        263,
-        61,
-        14,
-        377,
-        168,
-        374,
-    ]
+    layers = steering.default_layers
+    embedding_dim = 4096
+    num_epochs = 2
 
-    total = len(generations)
-    for idx, gens in enumerate(generations):
-        if idx not in mbppplus_train_failed_ids:
-            continue
-        print(f"Processing {idx + 1}/{total}...")
+    dataset = task.get_dataset()
+    total = len(dataset)
+    for epoch in num_epochs:
+        print(f"Epoch {epoch + 1}/{num_epochs}")
         steering.clear_steering_vectors(model)
-        prompt = mbpp.get_prompt(mbpp.get_dataset()[idx])
-        gen = gens[0]
-        gen = mbpp.postprocess_generation(gen, idx, include_prompt=False)
-        sol = mbpp.get_solution(idx)
-        reference = mbpp.get_reference(mbpp.get_dataset()[idx])
-
-        def get_cum_vec(vecs):
-            summed_vecs = vecs[0]
-            for vec in vecs[1:]:
-                summed_vecs = steering.add_steering_vectors(summed_vecs, vec)
-            return steering.normalize_steering_vectors(summed_vecs)
-
-        generations = [gen]
-        steering_vecs = []
-        passed = False
-        step = 0
-        with torch.no_grad():
-            while not passed and step < args.k:
-                step += 1
-                if len(steering_vecs):
-                    steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
-                gen_vecs = steering.create_steering_vectors(
-                    model, tokenizer, layers, generations[-1], include_steering=True
-                )
-                new_sol_vecs = steering.create_steering_vectors(
-                    model, tokenizer, layers, sol, include_steering=True
-                )
-                steer_vec = steering.subtract_steering_vectors(new_sol_vecs, gen_vecs)
-                steering_vecs.append(steer_vec)
-
-                steering.apply_steering_vectors(model, get_cum_vec(steering_vecs))
-                next_gen = parallel_generations(
-                    mbpp,
-                    mbpp.get_dataset(),
-                    accelerator,
-                    model,
-                    tokenizer,
-                    n_tasks=1,
-                    args=args,
-                    curr_sample_idx=idx,
-                )
-                next_genn = mbpp.postprocess_generation(
-                    next_gen[0][0], idx, include_prompt=False
-                )
-                generations.append(next_genn)
-                passed = (
-                    mbpp.process_results(
-                        [[next_genn]],
-                        [reference],
-                    )[
-                        0
-                    ]["pass@1"]
-                    == 1.0
-                )
-
-        for i, vec in enumerate(steering_vecs):
-            save_path = os.path.join(args.save_vecs_path, f"{idx}", f"{i+1}")
-            steering.save_steering_vecs(save_path, vec)
-        if args.save_generations_path:
-            save_path = os.path.join(args.save_generations_path, f"{idx}.json")
-            with open(save_path, "w") as f:
-                stuff = {
-                    "k": args.k,
-                    "passed": bool(passed),
-                    "generations": generations,
-                    "prompt": prompt,
-                    "solution": sol,
-                }
-                json.dump(stuff, f)
-        # clear tensors from gpu memory
-        for vec in gen_vecs.values():
-            del vec
-        for vec in steer_vec.values():
-            del vec
-        torch.cuda.empty_cache()
-        print(f"Completed {idx + 1}/{total}")
+        failed_ids = []
+        vec_sum = steering.create_zero_steering_vectors(layers, embedding_dim)
+        # create steering vectors from failed idxs
+        for idx, doc in enumerate(dataset):
+            if idx not in failed_ids:
+                continue
+            print(f"Processing {idx + 1}/{total}...")
+            gen = generations[idx][0]
+            solution = task.get_solution(idx)
+            gen_vec = steering.create_steering_vectors(
+                model,
+                tokenizer,
+                layers,
+                gen,
+            )
+            solution_vec = steering.create_steering_vectors(
+                model,
+                tokenizer,
+                layers,
+                solution,
+            )
+            steer_vec = steering.subtract_steering_vectors(solution_vec, gen_vec)
+            steer_vec = steering.normalize_steering_vectors(steer_vec)
+            vec_sum = steering.add_steering_vectors(vec_sum, steer_vec)
+            print(f"Completed {idx + 1}/{total}")
+        # generate code with steering vectors
+        steer_vec = steering.normalize_steering_vectors(vec_sum)
+        model = steering.apply_steering_vectors(model, steer_vec)
+        generations = []
+        references = []
+        for idx, doc in enumerate(dataset):
+            print(f"Processing {idx + 1}/{total}...")
+            if train_ids is not None and idx not in train_ids:
+                generations.append([])
+                references.append("")
+                continue
+            prompt = task.get_prompt(doc)
+            gen = steering.generate_one_completion(
+                model,
+                tokenizer,
+                prompt,
+            )
+            reference = task.get_reference(doc)
+            generations.append([gen])
+            references.append(reference)
+            print(f"Completed {idx + 1}/{total}")
+        # evaluate generations
+        results, details = task.process_results(
+            generations,
+            references,
+        )
+        print(f"Train pass rate: {results['pass@1']}")
+        result_details = details[args.task]
+        passed_ids, failed_ids = id_results(result_details)
 
 
 if __name__ == "__main__":

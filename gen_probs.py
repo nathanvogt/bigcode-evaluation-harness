@@ -194,6 +194,7 @@ def create_model(args):
         #         print("Loading model in auto mode")
 
     if args.modeltype == "causal":
+        model_kwargs["device_map"] = "cuda"
         layers = steering.default_layers
         model = AutoModelForCausalLM.from_pretrained(
             args.model,

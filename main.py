@@ -452,16 +452,10 @@ def main():
                         references.append("")
                         continue
                     print(f"processing {idx + 1}/{len(dataset)}")
-                    gen = parallel_generations(
-                        task,
-                        task.get_dataset(),
-                        accelerator,
-                        model,
-                        tokenizer,
-                        n_tasks=1,
-                        args=args,
-                        curr_sample_idx=idx,
-                    )[0][0]
+                    prompt = task.get_prompt(doc)
+                    gen = steering.generate_one_completion(
+                        model, tokenizer, prompt, max_new_tokens=512
+                    )
                     ref = task.get_reference(doc)
                     generations.append([gen])
                     references.append(ref)

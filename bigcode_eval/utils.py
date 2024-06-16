@@ -76,6 +76,7 @@ class TokenizedDataset(IterableDataset):
                     )
             else:
                 raise ValueError(f"Unsupported prompt format: {type(prompt_contents)}")
+            print(f"prompt:\n {prompt}")
             prompts.append(prompt)
             if self.has_encoder:
                 prompt_encoder = self.task.get_prompt_encoder(self.dataset[sample])
@@ -387,6 +388,7 @@ def update_code_gens(
                 gen_code = tokenizer.decode(
                     s, skip_special_tokens=False, clean_up_tokenization_spaces=False
                 )
+                print(f"code:\n {gen_code}")
                 try:
                     # some tokenizers add a multi-token prefix to the generation (e.g ChatGLM)
                     tokenizer_prefix = tokenizer.decode(tokenizer.get_prefix_tokens())
@@ -402,6 +404,7 @@ def update_code_gens(
                 gen_code = tokenizer.decode(
                     s, skip_special_tokens=True, clean_up_tokenization_spaces=True
                 )
+                print(f"code:\n {gen_code}")
             if not INFILL_MODE:
                 gen_code = gen_code[len(prefix) :]
             if postprocess:

@@ -101,13 +101,18 @@ class Evaluator:
             )
         return generations, references
 
-    def evaluate(self, task, intermediate_generations=None):
+    def evaluate(
+        self, task, intermediate_generations=None, generations_=None, references_=None
+    ):
         # if task.requires_execution and not self.allow_code_execution:
         #     raise ValueError(_WARNING)
-
-        generations, references = self.generate_text(
-            task, intermediate_generations=intermediate_generations
-        )
+        if generations_ and references_:
+            generations = generations_
+            references = references_
+        else:
+            generations, references = self.generate_text(
+                task, intermediate_generations=intermediate_generations
+            )
 
         if self.accelerator.is_main_process:
             if not self.args.load_generations_path:

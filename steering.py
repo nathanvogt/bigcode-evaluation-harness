@@ -28,6 +28,13 @@ def wrap_layers(model, layers: List[int]):
     return model
 
 
+def create_zero_steering_vectors(layers: List[int], dim: int, device="cpu"):
+    res = dict()
+    for layer_index in layers:
+        res[layer_index] = torch.zeros((1, 1, dim), device=device)
+    return res
+
+
 def create_steering_vectors(
     model, tokenizer, layers: List[int], prompt: str, include_steering=False
 ):
@@ -36,9 +43,9 @@ def create_steering_vectors(
         layer = model.model.layers[layer_index].self_attn
         input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
         _ = model(input_ids)
-        vec = layer.output[0][:, -1:, :].detach()
+        vec = layer.output[0][:, -1:, :].detach().cpu()
         if include_steering and layer.steering_vec is not None:
-            vec += layer.steering_vec
+            vec += layer.steering_vec.detach().cpu()
         vectors[layer_index] = vec
     return vectors
 
@@ -77,7 +84,11 @@ def scale_steering_vectors(alpha, vectors: Dict):
 
 def apply_steering_vectors(model, steering_vecs: Dict):
     for layer_index, steering_vec in steering_vecs.items():
-        model.model.layers[layer_index].self_attn.steering_vec = steering_vec
+        layer = model.model.layers[layer_index].self_attn
+        if layer.steering_vec is not None:
+            del layer.steering_vec
+        steering_vec.to(model.device)
+        layer.steering_vec = steering_vec
 
 
 def clear_steering_vectors(model):
@@ -87,33 +98,39 @@ def clear_steering_vectors(model):
         attn = layer.self_attn
         if not hasattr(attn, "steering_vec") or attn.steering_vec is None:
             continue
-        attn.steering_vec = torch.zeros_like(attn.steering_vec)
+        del attn.steering_vec
+        attn.steering_vec = None
 
 
-def generate_one_completion(model, tokenizer, prompt):
+def generate_one_completion(
+    model, tokenizer, prompt, max_new_tokens=512, return_prompt=False
+):
     messages = [
         {
             "role": "user",
             "content": f"Correctly implement the python function. No explanations. Only code. Don't put quotations.\n\n{prompt}",
         },
     ]
-    # input_ids = tokenizer.apply_chat_template(
-    #     messages, add_generation_prompt=True, return_tensors="pt"
-    # ).to(model.device)
-    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
+    input_ids = tokenizer.apply_chat_template(
+        messages, add_generation_prompt=True, return_tensors="pt"
+    ).to(model.device)
+    # input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
     terminators = [
         tokenizer.eos_token_id,
         tokenizer.convert_tokens_to_ids("<|eot_id|>"),
     ]
     outputs = model.generate(
         input_ids,
-        max_new_tokens=512,
+        max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=False,
-        use_cache=False,
     )
     response = outputs[0][input_ids.shape[-1] :]
-    return tokenizer.decode(response, skip_special_tokens=True)
+    response_text = tokenizer.decode(response, skip_special_tokens=True)
+    input_text = tokenizer.decode(input_ids[0], skip_special_tokens=True)
+    if return_prompt:
+        return response_text, input_text
+    return response_text
 
 
 def save_steering_vecs(save_path: str, vecs: Dict):

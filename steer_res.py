@@ -9,16 +9,10 @@ def load_probabilities(file_path):
     return torch.load(file_path)
 
 
-def id_results(path: str, flip=False):
+def id_results(results, flip=False):
     failed_ids = []
     passed_ids = []
-    with open(path, "r") as f:
-        results = json.load(f)
-    mbpp_results = (
-        results["mbppplus"]
-        if "mbppplus" in path
-        else results["mbpp"] if "mbpp" in path else None
-    )
+    mbpp_results = results
     if mbpp_results is None:
         raise ValueError("No MBPP or MBPP+ results found in file")
     for mbpp_result in mbpp_results.values():
@@ -32,6 +26,19 @@ def id_results(path: str, flip=False):
         else:
             failed_ids.append(task_id)
     return passed_ids, failed_ids
+
+
+def id_results_path(path: str, flip=False):
+    with open(path, "r") as f:
+        results = json.load(f)
+    mbpp_results = (
+        results["mbppplus"]
+        if "mbppplus" in path
+        else results["mbpp"] if "mbpp" in path else None
+    )
+    if mbpp_results is None:
+        raise ValueError("No MBPP or MBPP+ results found in file")
+    return id_results(mbpp_results, flip)
 
 
 def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=False):

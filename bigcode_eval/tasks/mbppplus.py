@@ -41,8 +41,7 @@ class MBPPPlus(MBPP):
         description = doc["prompt"]  # sanitized testset use "prompt" instead of "text"
         test_example = doc["test_list"][0]
         prompt = f'"""\n{description}\n{test_example}\n"""\n'
-        instruction = "Correctly implement the python function. No explanations. Only code. Don't put quotations."
-        return {"context": prompt, "instruction": instruction}
+        return prompt
 
     # NOTE(@ganler): MBPP+ extends the original MBPP jsonl data with a "test" field which
     #                includes the testing code ready for execution. Note the "test" field
