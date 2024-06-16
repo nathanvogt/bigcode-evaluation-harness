@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    folder_path = "/Users/nathanvogt/Downloads/vecs_k1_mbppplus"
-    destination_path = "/Users/nathanvogt/Downloads/vecs_k1_summed_mbppplus"
+    folder_path = "/Users/nathanvogt/Downloads/vecs_k8_mbppplus"
+    destination_path = "/Users/nathanvogt/Downloads/vecs_k8_summed_mbppplus"
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
     for task_folder in os.listdir(folder_path):

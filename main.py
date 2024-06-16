@@ -443,11 +443,6 @@ def main():
             if args.generation_only:
                 if accelerator.is_main_process:
                     print("generation mode only")
-                # generations, references = evaluator.generate_text(
-                #     task,
-                #     intermediate_generations=intermediate_generations,
-                #     included_ids=[2, 3],
-                # )
                 generations = []
                 references = []
                 dataset = task.get_dataset()
@@ -456,6 +451,7 @@ def main():
                         generations.append([])
                         references.append("")
                         continue
+                    print(f"processing {idx + 1}/{len(dataset)}")
                     gen = parallel_generations(
                         task,
                         task.get_dataset(),

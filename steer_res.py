@@ -55,6 +55,8 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=Fa
         correct = 0
         failed = 0
         for i, p in enumerate(probabilities):
+            if i not in steer_passed and i not in steer_failed:
+                continue
             if p >= threshold:
                 if i in no_steer_passed:
                     correct += 1
@@ -86,6 +88,7 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=Fa
                 no_steer_failed,
                 steer_passed,
                 steer_failed,
+                filter=True,
             )
 
 
@@ -108,20 +111,17 @@ def plot_task_probabilities(
         probabilities = [
             probabilities[i]
             for i in range(len(probabilities))
-            if (i in no_steer_passed and i in steer_failed)
-            or (i in no_steer_failed and i in steer_passed)
+            if (i in steer_passed or i in steer_failed)
         ]
         colors = [
             colors[i]
             for i in range(len(colors))
-            if (i in no_steer_passed and i in steer_failed)
-            or (i in no_steer_failed and i in steer_passed)
+            if (i in steer_passed or i in steer_failed)
         ]
         edge_colors = [
             edge_colors[i]
             for i in range(len(edge_colors))
-            if (i in no_steer_passed and i in steer_failed)
-            or (i in no_steer_failed and i in steer_passed)
+            if (i in steer_passed or i in steer_failed)
         ]
 
     plt.scatter(
