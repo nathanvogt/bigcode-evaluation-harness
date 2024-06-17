@@ -13,11 +13,12 @@ class WrappedModule(torch.nn.Module):
         self.steering_vec = None
 
     def forward(self, *args, **kwargs):
-        self.output = self.module(*args, **kwargs)
+        output = self.module(*args, **kwargs)
+        self.output = output[0].detach().cpu()
         if self.steering_vec is not None:
-            return (self.output[0] + self.steering_vec,) + self.output[1:]
+            return (output[0] + self.steering_vec,) + output[1:]
         else:
-            return self.output
+            return output
 
 
 def wrap_layers(model, layers: List[int]):
@@ -43,10 +44,12 @@ def create_steering_vectors(
         layer = model.model.layers[layer_index].self_attn
         input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
         _ = model(input_ids)
-        vec = layer.output[0][:, -1:, :].detach().cpu()
+        vec = layer.output[:, -1:, :].detach().cpu()
         if include_steering and layer.steering_vec is not None:
             vec += layer.steering_vec.detach().cpu()
         vectors[layer_index] = vec
+        del layer.output
+        del input_ids
     return vectors
 
 
@@ -87,8 +90,7 @@ def apply_steering_vectors(model, steering_vecs: Dict):
         layer = model.model.layers[layer_index].self_attn
         if layer.steering_vec is not None:
             del layer.steering_vec
-        steering_vec.to(model.device)
-        layer.steering_vec = steering_vec
+        layer.steering_vec = steering_vec.to(model.device)
 
 
 def clear_steering_vectors(model):

@@ -3,6 +3,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import os
 
 
 def load_probabilities(file_path):
@@ -31,21 +32,21 @@ def id_results(results, flip=False):
 def id_results_path(path: str, flip=False):
     with open(path, "r") as f:
         results = json.load(f)
-    mbpp_results = (
-        results["mbppplus"]
-        if "mbppplus" in path
-        else results["mbpp"] if "mbpp" in path else None
-    )
-    if mbpp_results is None:
-        raise ValueError("No MBPP or MBPP+ results found in file")
-    return id_results(mbpp_results, flip)
+    # mbpp_results = (
+    #     results["mbppplus"]
+    #     if "mbppplus" in path
+    #     else results["mbpp"] if "mbpp" in path else None
+    # )
+    # if mbpp_results is None:
+    #     raise ValueError("No MBPP or MBPP+ results found in file")
+    return id_results(results, flip)
 
 
 def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=False):
-    no_steer_passed, no_steer_failed = id_results(no_steer_path)
+    no_steer_passed, no_steer_failed = id_results_path(no_steer_path)
     # print(f"no steer passed:\n{no_steer_passed}")
     # print(f"no steer failed:\n{no_steer_failed}")
-    steer_passed, steer_failed = id_results(steer_path, flip=False)
+    steer_passed, steer_failed = id_results_path(steer_path, flip=False)
 
     print(
         f"Without steering: {len(no_steer_passed)} passed, {len(no_steer_failed)} failed"
@@ -95,7 +96,8 @@ def compare_steering_results(no_steer_path, steer_path, probs_path=None, plot=Fa
                 no_steer_failed,
                 steer_passed,
                 steer_failed,
-                filter=True,
+                # filter=True,
+                filter_flipped=True,
             )
 
 
@@ -106,6 +108,7 @@ def plot_task_probabilities(
     steer_passed,
     steer_failed,
     filter=False,
+    filter_flipped=False,
 ):
     colors = [
         "green" if task in no_steer_passed else "red"
@@ -114,7 +117,33 @@ def plot_task_probabilities(
     edge_colors = [
         "green" if task in steer_passed else "red" for task in range(len(probabilities))
     ]
-    if filter:
+    if filter_flipped:
+        probabilities = [
+            probabilities[i]
+            for i in range(len(probabilities))
+            if (
+                (i in no_steer_failed and i in steer_passed)
+                or (i in no_steer_passed and i in steer_failed)
+            )
+        ]
+        colors = [
+            colors[i]
+            for i in range(len(colors))
+            if (
+                (i in no_steer_failed and i in steer_passed)
+                or (i in no_steer_passed and i in steer_failed)
+            )
+        ]
+        edge_colors = [
+            edge_colors[i]
+            for i in range(len(edge_colors))
+            if (
+                (i in no_steer_failed and i in steer_passed)
+                or (i in no_steer_passed and i in steer_failed)
+            )
+        ]
+
+    elif filter:
         probabilities = [
             probabilities[i]
             for i in range(len(probabilities))
@@ -189,13 +218,42 @@ def plot_comparison_matrix(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_steer_path", type=str, required=True)
-    parser.add_argument("--steer_path", type=str, required=True)
+    parser.add_argument("--steer_path", type=str, required=False)
     parser.add_argument("--probs_path", type=str, required=False)
     parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--epochs_path", type=str, required=False)
     args = parser.parse_args()
-    compare_steering_results(
-        args.no_steer_path, args.steer_path, args.probs_path, args.plot
-    )
+    if args.epochs_path:
+        show_epochs(
+            args.no_steer_path,
+            args.epochs_path,
+            probs_path=args.probs_path,
+            plot=args.plot,
+        )
+    else:
+        compare_steering_results(
+            args.no_steer_path, args.steer_path, args.probs_path, args.plot
+        )
+
+
+def show_epochs(
+    no_steer_path,
+    folder_path,
+    probs_path=None,
+    plot=False,
+):
+    for i, folder in enumerate(os.listdir(folder_path)):
+        if os.path.isdir(os.path.join(folder_path, folder)):
+            details_path = os.path.join(folder_path, folder, "details.json")
+            if i > 0:
+                print("\n")
+            print(f"Epoch {i}")
+            compare_steering_results(
+                no_steer_path,
+                details_path,
+                probs_path=probs_path,
+                plot=plot,
+            )
 
 
 if __name__ == "__main__":

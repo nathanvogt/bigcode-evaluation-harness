@@ -496,6 +496,11 @@ def parse_args():
         default=1,
         help="Number of iterations to extract steering vector",
     )
+    parser.add_argument(
+        "--save_folder",
+        type=str,
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -609,6 +614,7 @@ def main():
     accelerator = Accelerator()
 
     model = create_model(args)
+    model.eval()
     tokenizer = create_tokenizer(args)
     layers = steering.default_layers
 
@@ -625,71 +631,95 @@ def main():
     if args.save_generations_path and not os.path.exists(args.save_generations_path):
         os.makedirs(args.save_generations_path)
 
+    if args.save_folder is not None and not os.path.exists(args.save_folder):
+        os.makedirs(args.save_folder)
+
     task = MBPP(args.dataset_split) if args.task == "mbpp" else MBPPPlus()
 
     layers = steering.default_layers
     embedding_dim = 4096
-    num_epochs = 2
+    num_epochs = 4
+    failed_ids = initially_train_failing
 
     dataset = task.get_dataset()
     total = len(dataset)
-    for epoch in num_epochs:
-        print(f"Epoch {epoch + 1}/{num_epochs}")
-        steering.clear_steering_vectors(model)
-        failed_ids = []
+    with torch.no_grad():
         vec_sum = steering.create_zero_steering_vectors(layers, embedding_dim)
-        # create steering vectors from failed idxs
-        for idx, doc in enumerate(dataset):
-            if idx not in failed_ids:
-                continue
-            print(f"Processing {idx + 1}/{total}...")
-            gen = generations[idx][0]
-            solution = task.get_solution(idx)
-            gen_vec = steering.create_steering_vectors(
-                model,
-                tokenizer,
-                layers,
-                gen,
+        for epoch in range(num_epochs):
+            if args.save_folder is not None and not os.path.exists(
+                os.path.join(args.save_folder, f"epoch_{epoch}")
+            ):
+                os.makedirs(os.path.join(args.save_folder, f"epoch_{epoch}"))
+            print(f"Epoch {epoch + 1}/{num_epochs}")
+            # steering.clear_steering_vectors(model)
+            # create steering vectors from failed idxs
+            epoch_vec_sum = steering.create_zero_steering_vectors(layers, embedding_dim)
+            for idx, doc in enumerate(dataset):
+                if idx not in failed_ids:
+                    continue
+                print(f"Processing {idx + 1}/{total}...")
+                gen = generations[idx][0]
+                solution = task.get_solution(idx)
+                gen_vec = steering.create_steering_vectors(
+                    model, tokenizer, layers, gen, include_steering=True
+                )
+                solution_vec = steering.create_steering_vectors(
+                    model, tokenizer, layers, solution, include_steering=True
+                )
+                steer_vec = steering.subtract_steering_vectors(solution_vec, gen_vec)
+                steer_vec = steering.normalize_steering_vectors(steer_vec)
+                epoch_vec_sum = steering.add_steering_vectors(epoch_vec_sum, steer_vec)
+                print(f"Completed {idx + 1}/{total}")
+            if args.save_folder is not None:
+                path = os.path.join(args.save_folder, f"epoch_{epoch}", "vecs_sum")
+                steering.save_steering_vecs(path, vec_sum)
+            epoch_vec_sum = steering.normalize_steering_vectors(epoch_vec_sum)
+            vec_sum = steering.add_steering_vectors(vec_sum, epoch_vec_sum)
+            print("Steering vectors created")
+            torch.cuda.empty_cache()
+            print("Generating code with steering vectors")
+            # generate code with steering vectors
+            # steer_vec = steering.normalize_steering_vectors(vec_sum)
+            steering.apply_steering_vectors(model, vec_sum)
+            generations = []
+            references = []
+            for idx, doc in enumerate(dataset):
+                print(f"Processing {idx + 1}/{total}...")
+                if train_ids is not None and idx not in train_ids:
+                    generations.append([])
+                    references.append("")
+                    continue
+                prompt = task.get_prompt(doc)
+                gen = steering.generate_one_completion(
+                    model, tokenizer, prompt, max_new_tokens=128
+                )
+                reference = task.get_reference(doc)
+                generations.append([gen])
+                references.append(reference)
+                print(f"Completed {idx + 1}/{total}")
+            # save generations
+            if args.save_folder is not None:
+                path = os.path.join(
+                    args.save_folder, f"epoch_{epoch}", "generations.json"
+                )
+                with open(path, "w") as f:
+                    json.dump(generations, f)
+            # evaluate generations
+            results, details = task.process_results(
+                generations,
+                references,
             )
-            solution_vec = steering.create_steering_vectors(
-                model,
-                tokenizer,
-                layers,
-                solution,
-            )
-            steer_vec = steering.subtract_steering_vectors(solution_vec, gen_vec)
-            steer_vec = steering.normalize_steering_vectors(steer_vec)
-            vec_sum = steering.add_steering_vectors(vec_sum, steer_vec)
-            print(f"Completed {idx + 1}/{total}")
-        # generate code with steering vectors
-        steer_vec = steering.normalize_steering_vectors(vec_sum)
-        model = steering.apply_steering_vectors(model, steer_vec)
-        generations = []
-        references = []
-        for idx, doc in enumerate(dataset):
-            print(f"Processing {idx + 1}/{total}...")
-            if train_ids is not None and idx not in train_ids:
-                generations.append([])
-                references.append("")
-                continue
-            prompt = task.get_prompt(doc)
-            gen = steering.generate_one_completion(
-                model,
-                tokenizer,
-                prompt,
-            )
-            reference = task.get_reference(doc)
-            generations.append([gen])
-            references.append(reference)
-            print(f"Completed {idx + 1}/{total}")
-        # evaluate generations
-        results, details = task.process_results(
-            generations,
-            references,
-        )
-        print(f"Train pass rate: {results['pass@1']}")
-        result_details = details[args.task]
-        passed_ids, failed_ids = id_results(result_details)
+            if args.save_folder is not None:
+                path = os.path.join(args.save_folder, f"epoch_{epoch}", "results.json")
+                with open(path, "w") as f:
+                    json.dump(results, f)
+                path = os.path.join(args.save_folder, f"epoch_{epoch}", "details.json")
+                with open(path, "w") as f:
+                    json.dump(details, f)
+            print(f"Train pass rate: {results['pass@1']}")
+            passed_ids, failed_ids = id_results(details)
+
+            torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
